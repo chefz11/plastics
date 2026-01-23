@@ -34,7 +34,6 @@ export default function SidebarHeader({ isCollapsed, onToggle }: SidebarHeaderPr
           alt="Toggle sidebar"
           width={20}
           height={18}
-          className="opacity-70"
         />
       </button>
     </div>
