@@ -31,6 +31,16 @@ export const projects: Project[] = [
     path: '/projects/Bookshelf/index.html',
     isBookmarked: true,
   },
+  {
+    id: 'peg-game',
+    name: 'Peg Game',
+    description: 'Cracker Barrel Triangle Peg Game',
+    creationDate: '2026-01-23',
+    codingType: 'vibe-coded',
+    contentType: 'static',
+    path: '/projects/PegGame/index.html',
+    isBookmarked: true,
+  },
 ];
 
 export const getProjectById = (id: string): Project | undefined => {

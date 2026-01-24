@@ -4,9 +4,10 @@ import Image from 'next/image';
 interface SidebarHeaderProps {
   isCollapsed: boolean;
   onToggle: () => void;
+  onLogoClick?: () => void;
 }
 
-export default function SidebarHeader({ isCollapsed, onToggle }: SidebarHeaderProps) {
+export default function SidebarHeader({ isCollapsed, onToggle, onLogoClick }: SidebarHeaderProps) {
   if (isCollapsed) {
     return (
       <div className="flex items-center justify-center p-4">
@@ -23,7 +24,13 @@ export default function SidebarHeader({ isCollapsed, onToggle }: SidebarHeaderPr
 
   return (
     <div className="flex items-center justify-between p-4">
-      <span className="logo-text text-sidebar-text">Plastics</span>
+      <button
+        onClick={onLogoClick}
+        className="logo-text text-sidebar-text hover:opacity-70 transition-opacity cursor-pointer"
+        aria-label="Return to home"
+      >
+        Plastics
+      </button>
       <button
         onClick={onToggle}
         className="p-2 hover:bg-sidebar-hover rounded-lg transition-colors"

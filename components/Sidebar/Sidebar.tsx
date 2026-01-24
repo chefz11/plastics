@@ -13,6 +13,7 @@ interface SidebarProps {
   onProjectSelect: (id: string) => void;
   projects: Project[];
   className?: string;
+  onLogoClick?: () => void;
 }
 
 export default function Sidebar({
@@ -22,6 +23,7 @@ export default function Sidebar({
   onProjectSelect,
   projects,
   className,
+  onLogoClick,
 }: SidebarProps) {
   return (
     <div
@@ -31,7 +33,7 @@ export default function Sidebar({
         className
       )}
     >
-      <SidebarHeader isCollapsed={isCollapsed} onToggle={onToggle} />
+      <SidebarHeader isCollapsed={isCollapsed} onToggle={onToggle} onLogoClick={onLogoClick} />
       {!isCollapsed && (
         <ProjectList
           projects={projects}
