@@ -23,8 +23,7 @@ export default function ProjectDisplay({ project }: ProjectDisplayProps) {
           <p className="text-lg mb-4">
             Sturgeon&rsquo;s law states that 90% of everything is crap. This is my attempt at sorting through to find the other 10%.
           </p>
-          <p className="text-lg mb-2">Enjoy.</p>
-          <p className="text-lg">-Zach</p>
+          <p className="text-lg">Zach</p>
         </div>
       </div>
     );

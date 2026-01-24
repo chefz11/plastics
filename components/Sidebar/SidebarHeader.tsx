@@ -12,7 +12,7 @@ export default function SidebarHeader({ isCollapsed, onToggle }: SidebarHeaderPr
       <div className="flex items-center justify-center p-4">
         <button
           onClick={onToggle}
-          className="logo-text text-sidebar-text hover:opacity-70 transition-opacity"
+          className="logo-text text-sidebar-text p-2 hover:bg-sidebar-hover rounded-lg transition-colors leading-none"
           aria-label="Expand sidebar"
         >
           P

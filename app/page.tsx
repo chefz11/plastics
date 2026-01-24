@@ -70,7 +70,7 @@ function HomeContent() {
           >
             <Menu size={24} className="text-gray-700" />
           </button>
-          <h1 className="logo-text text-2xl">Plastics</h1>
+          <h1 className="logo-text">Plastics</h1>
           <div className="w-10" /> {/* Spacer for centering */}
         </div>
 
