@@ -18,7 +18,7 @@ export default function ProjectDisplay({ project }: ProjectDisplayProps) {
             <span className="logo-text" style={{ fontSize: '1rem' }}>Plastics</span> is a personal catalogue of building and learning with AI. Why &ldquo;Plastics&rdquo;?
           </p>
           <p className="text-base mb-4">
-            Generative AI coding tools democratize software same way plastics did for physical products in the 1950s.
+            Generative AI tools make software inexpensive the same way plastics did for physical products in the 1950s.
           </p>
           <p className="text-base mb-4">
             Sturgeon&rsquo;s law states that 90% of everything is crap. This is my attempt at sorting through to find the other 10%.
