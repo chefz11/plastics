@@ -13,8 +13,18 @@ export default function ProjectDisplay({ project }: ProjectDisplayProps) {
   if (!project) {
     return (
       <div className="flex items-center justify-center h-full bg-white">
-        <div className="text-center text-gray-500">
-          <p className="text-lg">Select a project to view</p>
+        <div className="text-center text-gray-600 max-w-2xl px-8">
+          <p className="text-lg mb-4">
+            Plastics is a personal catalogue of building and learning with AI. Why "Plastics"?
+          </p>
+          <p className="text-lg mb-4">
+            Generative AI coding tools democratize software same way plastics did for physical products in the 1950s.
+          </p>
+          <p className="text-lg mb-4">
+            Sturgeon's law states that 90% of everything is crap. This is my attempt at sorting through to find the other 10%.
+          </p>
+          <p className="text-lg mb-2">Enjoy.</p>
+          <p className="text-lg">-Zach</p>
         </div>
       </div>
     );
