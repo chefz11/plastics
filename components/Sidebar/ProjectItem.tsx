@@ -11,7 +11,7 @@ interface ProjectItemProps {
 export default function ProjectItem({ project, isSelected, onClick }: ProjectItemProps) {
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   };
 
   const getCodingTypeLabel = (type: Project['codingType']): string => {

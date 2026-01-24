@@ -13,7 +13,7 @@ export const projects: Project[] = [
   },
   {
     id: 'portfolio',
-    name: 'Portfolio',
+    name: 'Portfolio (zalbright.com)',
     description: 'Personal Portfolio Site',
     creationDate: '2026-01-06',
     codingType: 'pair-coded',
@@ -25,9 +25,10 @@ export const projects: Project[] = [
     id: 'bookshelf',
     name: 'Bookshelf',
     description: 'Reading List Tracker',
-    creationDate: '2025-01-25',
+    creationDate: '2026-01-25',
     codingType: 'vibe-coded',
-    contentType: 'coming-soon',
+    contentType: 'static',
+    path: '/projects/Bookshelf/index.html',
     isBookmarked: true,
   },
 ];
