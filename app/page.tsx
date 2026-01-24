@@ -23,7 +23,7 @@ function HomeContent() {
 
   // Sync URL param changes (only when URL changes externally)
   useEffect(() => {
-    if (projectParam && projectParam !== selectedProjectId) {
+    if (projectParam !== selectedProjectId) {
       setSelectedProjectId(projectParam);
     }
   }, [projectParam]);
@@ -32,6 +32,11 @@ function HomeContent() {
     setSelectedProjectId(id);
     router.push(`?project=${id}`, { scroll: false });
     setIsMobileDrawerOpen(false);
+  };
+
+  const handleLogoClick = () => {
+    setSelectedProjectId(null);
+    router.push('/', { scroll: false });
   };
 
 
@@ -45,6 +50,7 @@ function HomeContent() {
           selectedProjectId={selectedProjectId}
           onProjectSelect={handleProjectSelect}
           projects={projects}
+          onLogoClick={handleLogoClick}
         />
       </div>
 
@@ -56,6 +62,7 @@ function HomeContent() {
           selectedProjectId={selectedProjectId}
           onProjectSelect={handleProjectSelect}
           projects={projects}
+          onLogoClick={handleLogoClick}
         />
       </MobileDrawer>
 

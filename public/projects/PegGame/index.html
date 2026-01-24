@@ -34,11 +34,6 @@
         }
 
         .game-container {
-            background: #f5deb3;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-            border: 3px solid #8B4513;
             max-width: 600px;
             width: 100%;
         }
@@ -94,8 +89,23 @@
             width: 38px;
             height: 38px;
             border-radius: 50%;
-            background: radial-gradient(circle at 30% 30%, #CD853F, #8B4513);
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hole.filled.red::before {
+            background: radial-gradient(circle at 30% 30%, #FF6B6B, #CC0000);
+        }
+
+        .hole.filled.yellow::before {
+            background: radial-gradient(circle at 30% 30%, #FFE66D, #FFD700);
+        }
+
+        .hole.filled.blue::before {
+            background: radial-gradient(circle at 30% 30%, #4ECDC4, #0047AB);
+        }
+
+        .hole.filled.white::before {
+            background: radial-gradient(circle at 30% 30%, #FFFFFF, #E0E0E0);
         }
 
         .hole.selected {
@@ -175,7 +185,7 @@
 </head>
 <body>
     <div class="header">
-        <img src="/assets/favicon.png" alt="Logo" class="logo">
+        <img src="assets/CB_plasticFlip.png" alt="Logo" class="logo">
     </div>
 
     <div class="game-container">
@@ -253,13 +263,22 @@
             [11, 8, 5], [5, 8, 11],
         ];
 
+        const COLORS = ['red', 'yellow', 'blue', 'white'];
+
         let board = [];
+        let pegColors = [];
         let selectedPeg = null;
 
         function initBoard() {
             // Start with all filled except position 0
             board = new Array(15).fill(true);
             board[0] = false;
+
+            // Assign random colors to each peg
+            pegColors = new Array(15).fill(null).map(() =>
+                COLORS[Math.floor(Math.random() * COLORS.length)]
+            );
+
             selectedPeg = null;
             renderBoard();
             updateStatus('Click a peg to start');
@@ -281,6 +300,7 @@
 
                     if (board[position]) {
                         hole.classList.add('filled');
+                        hole.classList.add(pegColors[position]);
                     } else {
                         hole.classList.add('empty');
                     }
@@ -351,6 +371,9 @@
                 board[from] = false;
                 board[to] = true;
                 board[over] = false;
+
+                // Move the color to the new position
+                pegColors[to] = pegColors[from];
             }
         }
 
