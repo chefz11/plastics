@@ -15,7 +15,7 @@ export default function ProjectDisplay({ project }: ProjectDisplayProps) {
       <div className="flex items-center justify-center h-full bg-white">
         <div className="text-left max-w-2xl px-8" style={{ color: '#1a1a1a' }}>
           <p className="text-base mb-4">
-            Plastics is a personal catalogue of building and learning with AI. Why &ldquo;Plastics&rdquo;?
+            <span className="logo-text" style={{ fontSize: '1rem' }}>Plastics</span> is a personal catalogue of building and learning with AI. Why &ldquo;Plastics&rdquo;?
           </p>
           <p className="text-base mb-4">
             Generative AI coding tools democratize software same way plastics did for physical products in the 1950s.
