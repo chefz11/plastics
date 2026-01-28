@@ -41,6 +41,16 @@ export const projects: Project[] = [
     path: '/projects/PegGame/index.html',
     isBookmarked: true,
   },
+  {
+    id: 'egg',
+    name: 'Egg',
+    description: '3D Photo Morphing App',
+    creationDate: '2026-01-28',
+    codingType: 'vibe-coded',
+    contentType: 'static',
+    path: '/projects/Egg/index.html',
+    isBookmarked: true,
+  },
 ];
 
 export const getProjectById = (id: string): Project | undefined => {

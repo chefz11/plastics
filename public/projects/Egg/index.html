@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Egg - 3D Photo Morphing</title>
+  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://unpkg.com/heic2any@0.0.4/dist/heic2any.min.js"></script>
+  <script src="https://unpkg.com/gif.js@0.2.0/dist/gif.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #fff;
+      --text-color: #333;
+      --accent-color: #e8e8e8;
+      --border-color: #ccc;
+      --btn-bg: #fff;
+      --btn-hover: #eee;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .screen {
+      display: none;
+      width: 100%;
+      height: 100vh;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    /* Upload Screen */
+    #upload-screen {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      gap: 24px;
+    }
+
+    .title {
+      font-family: 'Caveat', cursive;
+      font-size: 48px;
+      font-weight: 600;
+      color: var(--text-color);
+    }
+
+    .drop-zone {
+      width: 100%;
+      max-width: 360px;
+      aspect-ratio: 1;
+      border: 3px dashed var(--border-color);
+      border-radius: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--btn-bg);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--text-color);
+      background: var(--accent-color);
+    }
+
+    .drop-zone.has-image {
+      border-style: solid;
+    }
+
+    .drop-zone svg {
+      width: 80px;
+      height: 100px;
+      fill: var(--border-color);
+      transition: fill 0.2s ease;
+    }
+
+    .drop-zone:hover svg {
+      fill: var(--text-color);
+    }
+
+    .drop-zone-text {
+      font-size: 16px;
+      color: #888;
+      text-align: center;
+    }
+
+    .drop-zone-preview {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: var(--btn-bg);
+    }
+
+    .drop-zone-preview img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .drop-zone.has-image .drop-zone-preview {
+      display: flex;
+    }
+
+    .drop-zone.has-image svg,
+    .drop-zone.has-image .drop-zone-text {
+      display: none;
+    }
+
+    #file-input {
+      display: none;
+    }
+
+    .name-input-wrapper {
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .name-input-wrapper label {
+      display: block;
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    #name-input {
+      width: 100%;
+      padding: 14px 18px;
+      font-size: 18px;
+      font-family: 'Caveat', cursive;
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      background: var(--btn-bg);
+      color: var(--text-color);
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    #name-input:focus {
+      border-color: var(--text-color);
+    }
+
+    #name-input::placeholder {
+      color: #aaa;
+    }
+
+    #continue-btn {
+      width: 100%;
+      max-width: 360px;
+      padding: 16px 32px;
+      font-size: 18px;
+      font-weight: 500;
+      background: var(--text-color);
+      color: var(--bg-color);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    #continue-btn.enabled {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #continue-btn.enabled:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    .loading-indicator {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .loading-indicator.visible {
+      display: flex;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border-color);
+      border-top-color: var(--text-color);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Editor Screen */
+    #editor-screen {
+      flex-direction: column;
+      position: relative;
+    }
+
+    #canvas-container {
+      flex: 1;
+      position: relative;
+      touch-action: none;
+    }
+
+    #canvas-container canvas {
+      display: block;
+    }
+
+    .toolbar {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      background: var(--btn-bg);
+      padding: 8px;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      z-index: 10;
+    }
+
+    .toolbar button {
+      width: 48px;
+      height: 48px;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .toolbar button:hover {
+      background: var(--accent-color);
+    }
+
+    .toolbar button.active {
+      border-color: var(--text-color);
+      background: var(--accent-color);
+    }
+
+    .toolbar button svg {
+      width: 24px;
+      height: 24px;
+      fill: var(--text-color);
+    }
+
+    .bottom-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .bottom-bar button {
+      padding: 14px 24px;
+      font-size: 16px;
+      font-weight: 500;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #undo-btn {
+      background: var(--btn-bg);
+      color: var(--text-color);
+      box-shadow: var(--shadow);
+    }
+
+    #undo-btn:hover:not(:disabled) {
+      background: var(--accent-color);
+    }
+
+    #undo-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    #undo-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    #download-btn {
+      background: var(--text-color);
+      color: var(--bg-color);
+    }
+
+    #download-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    #download-btn:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    #download-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    .tool-hint {
+      position: absolute;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .tool-hint.visible {
+      opacity: 1;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .title {
+        font-size: 36px;
+      }
+
+      .drop-zone {
+        max-width: 280px;
+      }
+
+      .name-input-wrapper,
+      #continue-btn {
+        max-width: 280px;
+      }
+
+      .toolbar button {
+        width: 42px;
+        height: 42px;
+      }
+
+      .bottom-bar button {
+        padding: 12px 18px;
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Upload Screen -->
+  <div id="upload-screen" class="screen active">
+    <h1 class="title">Egg</h1>
+
+    <div class="drop-zone" id="drop-zone">
+      <svg viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="40" cy="55" rx="35" ry="42" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path d="M25 50 L35 60 L55 40" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="drop-zone-text">Drop or search a photo</span>
+      <div class="drop-zone-preview">
+        <img id="preview-image" alt="Preview">
+      </div>
+    </div>
+    <input type="file" id="file-input" accept="image/*,.heic,.heif">
+
+    <div class="loading-indicator" id="loading-indicator">
+      <div class="spinner"></div>
+      <span>Processing image...</span>
+    </div>
+
+    <div class="name-input-wrapper">
+      <label for="name-input">Name Your Egg</label>
+      <input type="text" id="name-input">
+    </div>
+
+    <button id="continue-btn">Continue</button>
+  </div>
+
+  <!-- Editor Screen -->
+  <div id="editor-screen" class="screen">
+    <div id="canvas-container"></div>
+
+    <div class="toolbar">
+      <button id="rotate-btn" class="active" title="Rotate">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M7.5 3.5C4.5 5.5 3 9 3 12c0 5 4 9 9 9s9-4 9-9h-2c0 3.9-3.1 7-7 7s-7-3.1-7-7c0-2.5 1.2-5 3.5-6.5L7.5 3.5z"/>
+          <path d="M8 1l4 4-4 4V1z"/>
+          <path d="M16.5 20.5c3-2 4.5-5.5 4.5-8.5 0-5-4-9-9-9v2c3.9 0 7 3.1 7 7 0 2.5-1.2 5-3.5 6.5l1 2z"/>
+          <path d="M16 23l-4-4 4-4v8z"/>
+        </svg>
+      </button>
+      <button id="push-btn" title="Push">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+          <path d="M12 17l5-5h-3V8h-4v4H7z"/>
+        </svg>
+      </button>
+      <button id="pull-btn" title="Pull">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+          <path d="M12 7l-5 5h3v4h4v-4h3z"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="tool-hint" id="tool-hint">Drag on the egg to morph</div>
+
+    <div class="bottom-bar">
+      <button id="undo-btn" disabled>
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+        </svg>
+        Undo
+      </button>
+      <button id="download-btn">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+        </svg>
+        Download
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // App State
+    const AppState = {
+      currentScreen: 'upload',
+      uploadedImage: null,
+      userName: '',
+      originalVertices: null,
+      morphHistory: [],
+      activeTool: 'rotate',
+      isPointerDown: false,
+      lastMorphTime: 0,
+      // Three.js refs
+      scene: null,
+      camera: null,
+      renderer: null,
+      eggMesh: null,
+      controls: null,
+      raycaster: null,
+      pointer: new THREE.Vector2()
+    };
+
+    const MAX_HISTORY = 50;
+    const MORPH_THROTTLE = 16; // ~60fps
+    const MAX_DEFORMATION = 0.15;
+    const BRUSH_RADIUS = 0.8;
+    const MORPH_STRENGTH = 0.008;
+
+    // Utility Functions
+    async function processImageFile(file) {
+      const isHeic = file.type === 'image/heic' ||
+                     file.type === 'image/heif' ||
+                     file.name.toLowerCase().endsWith('.heic') ||
+                     file.name.toLowerCase().endsWith('.heif');
+
+      if (isHeic && typeof heic2any !== 'undefined') {
+        showLoading(true);
+        try {
+          const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+          return blobToDataURL(blob);
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      return blobToDataURL(file);
+    }
+
+    function blobToDataURL(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function showLoading(visible) {
+      document.getElementById('loading-indicator').classList.toggle('visible', visible);
+    }
+
+    // Egg Geometry
+    function createEggGeometry(widthSegments = 64, heightSegments = 32) {
+      const geometry = new THREE.BufferGeometry();
+      const vertices = [];
+      const uvs = [];
+      const indices = [];
+
+      // Egg parameters
+      const a = 1.0;  // radius at equator
+      const b = 1.4;  // height (top to bottom)
+      const k = 0.2;  // asymmetry factor (larger = pointier top)
+
+      for (let y = 0; y <= heightSegments; y++) {
+        const v = y / heightSegments;
+        const phi = v * Math.PI; // 0 to PI
+
+        for (let x = 0; x <= widthSegments; x++) {
+          const u = x / widthSegments;
+          const theta = u * Math.PI * 2; // 0 to 2PI
+
+          // Egg equation with asymmetry
+          const sinPhi = Math.sin(phi);
+          const cosPhi = Math.cos(phi);
+          const asymmetry = 1 + k * cosPhi; // Makes bottom rounder, top pointier
+
+          const px = a * sinPhi * Math.cos(theta) * asymmetry;
+          const py = -b * cosPhi; // Negative to orient correctly
+          const pz = a * sinPhi * Math.sin(theta) * asymmetry;
+
+          vertices.push(px, py, pz);
+          uvs.push(u, 1 - v);
+        }
+      }
+
+      // Generate indices
+      for (let y = 0; y < heightSegments; y++) {
+        for (let x = 0; x < widthSegments; x++) {
+          const a = y * (widthSegments + 1) + x;
+          const b = a + widthSegments + 1;
+
+          indices.push(a, b, a + 1);
+          indices.push(b, b + 1, a + 1);
+        }
+      }
+
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+
+      return geometry;
+    }
+
+    // Three.js Setup
+    function initThreeJS() {
+      const container = document.getElementById('canvas-container');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      // Scene
+      AppState.scene = new THREE.Scene();
+      AppState.scene.background = new THREE.Color(0xffffff);
+
+      // Camera
+      AppState.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+      AppState.camera.position.set(0, 0, 5);
+
+      // Renderer
+      AppState.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      AppState.renderer.setSize(width, height);
+      AppState.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      AppState.renderer.shadowMap.enabled = true;
+      AppState.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(AppState.renderer.domElement);
+
+      // Lighting
+      createLighting();
+
+      // Egg
+      createEgg();
+
+      // Shadow plane
+      createShadowPlane();
+
+      // Controls
+      AppState.controls = new THREE.OrbitControls(AppState.camera, AppState.renderer.domElement);
+      AppState.controls.enableDamping = true;
+      AppState.controls.dampingFactor = 0.05;
+      AppState.controls.minDistance = 3;
+      AppState.controls.maxDistance = 10;
+      AppState.controls.enablePan = false;
+
+      // Raycaster
+      AppState.raycaster = new THREE.Raycaster();
+
+      // Input handling
+      setupInputHandlers();
+
+      // Window resize
+      window.addEventListener('resize', onWindowResize);
+
+      // Animation loop
+      animate();
+    }
+
+    function createLighting() {
+      // Ambient light - higher intensity for softer look
+      const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+      AppState.scene.add(ambient);
+
+      // Main directional light with shadows - softer
+      const mainLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      mainLight.position.set(5, 10, 7);
+      mainLight.castShadow = true;
+      mainLight.shadow.mapSize.width = 1024;
+      mainLight.shadow.mapSize.height = 1024;
+      mainLight.shadow.camera.near = 0.5;
+      mainLight.shadow.camera.far = 50;
+      mainLight.shadow.camera.left = -5;
+      mainLight.shadow.camera.right = 5;
+      mainLight.shadow.camera.top = 5;
+      mainLight.shadow.camera.bottom = -5;
+      mainLight.shadow.bias = -0.001;
+      AppState.scene.add(mainLight);
+
+      // Fill light - softer
+      const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+      fillLight.position.set(-5, 5, -5);
+      AppState.scene.add(fillLight);
+    }
+
+    function createEgg() {
+      const geometry = createEggGeometry();
+
+      // Store original vertices for deformation limits
+      const positions = geometry.getAttribute('position').array;
+      AppState.originalVertices = new Float32Array(positions);
+
+      // Load texture
+      const textureLoader = new THREE.TextureLoader();
+      const texture = textureLoader.load(AppState.uploadedImage);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      // Flip texture vertically to correct orientation
+      texture.flipY = true;
+      texture.repeat.set(1, -1);
+      texture.offset.set(0, 1);
+
+      const material = new THREE.MeshStandardMaterial({
+        map: texture,
+        roughness: 1.0,
+        metalness: 0.0
+      });
+
+      AppState.eggMesh = new THREE.Mesh(geometry, material);
+      AppState.eggMesh.castShadow = true;
+      AppState.eggMesh.receiveShadow = true;
+      AppState.scene.add(AppState.eggMesh);
+
+      // Create brush indicator
+      createBrushIndicator();
+    }
+
+    function createBrushIndicator() {
+      const geometry = new THREE.RingGeometry(BRUSH_RADIUS - 0.02, BRUSH_RADIUS, 32);
+      const material = new THREE.MeshBasicMaterial({
+        color: 0x666666,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.5,
+        depthTest: false
+      });
+      AppState.brushIndicator = new THREE.Mesh(geometry, material);
+      AppState.brushIndicator.visible = false;
+      AppState.scene.add(AppState.brushIndicator);
+    }
+
+    function createShadowPlane() {
+      const shadowGeo = new THREE.PlaneGeometry(10, 10);
+      const shadowMat = new THREE.ShadowMaterial({ opacity: 0.15 });
+      const shadowPlane = new THREE.Mesh(shadowGeo, shadowMat);
+      shadowPlane.rotation.x = -Math.PI / 2;
+      shadowPlane.position.y = -1.6;
+      shadowPlane.receiveShadow = true;
+      AppState.scene.add(shadowPlane);
+    }
+
+    function setupInputHandlers() {
+      const canvas = AppState.renderer.domElement;
+
+      // Pointer events
+      canvas.addEventListener('pointerdown', onPointerDown);
+      canvas.addEventListener('pointermove', onPointerMove);
+      canvas.addEventListener('pointerup', onPointerUp);
+      canvas.addEventListener('pointerleave', onPointerLeave);
+    }
+
+    function onPointerDown(event) {
+      if (AppState.activeTool === 'rotate') return;
+
+      AppState.isPointerDown = true;
+      updatePointer(event);
+
+      // Save state before morphing starts
+      saveToHistory();
+    }
+
+    function onPointerMove(event) {
+      updatePointer(event);
+
+      // Update brush indicator position
+      if (AppState.activeTool !== 'rotate') {
+        updateBrushIndicator();
+      }
+
+      if (!AppState.isPointerDown || AppState.activeTool === 'rotate') return;
+
+      const now = performance.now();
+      if (now - AppState.lastMorphTime < MORPH_THROTTLE) return;
+      AppState.lastMorphTime = now;
+
+      performMorph();
+    }
+
+    function onPointerUp() {
+      AppState.isPointerDown = false;
+    }
+
+    function onPointerLeave() {
+      AppState.isPointerDown = false;
+      if (AppState.brushIndicator) {
+        AppState.brushIndicator.visible = false;
+      }
+    }
+
+    function updateBrushIndicator() {
+      if (!AppState.brushIndicator) return;
+
+      AppState.raycaster.setFromCamera(AppState.pointer, AppState.camera);
+      const intersects = AppState.raycaster.intersectObject(AppState.eggMesh);
+
+      if (intersects.length > 0) {
+        const intersect = intersects[0];
+        AppState.brushIndicator.position.copy(intersect.point);
+        AppState.brushIndicator.lookAt(
+          intersect.point.x + intersect.face.normal.x,
+          intersect.point.y + intersect.face.normal.y,
+          intersect.point.z + intersect.face.normal.z
+        );
+        // Offset slightly to prevent z-fighting
+        AppState.brushIndicator.position.addScaledVector(intersect.face.normal, 0.01);
+        AppState.brushIndicator.visible = true;
+      } else {
+        AppState.brushIndicator.visible = false;
+      }
+    }
+
+    function updatePointer(event) {
+      const canvas = AppState.renderer.domElement;
+      const rect = canvas.getBoundingClientRect();
+      AppState.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      AppState.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    }
+
+    function performMorph() {
+      AppState.raycaster.setFromCamera(AppState.pointer, AppState.camera);
+      const intersects = AppState.raycaster.intersectObject(AppState.eggMesh);
+
+      if (intersects.length === 0) return;
+
+      const intersect = intersects[0];
+      const intersectPoint = intersect.point;
+      const geometry = AppState.eggMesh.geometry;
+      const positions = geometry.getAttribute('position');
+      const normals = geometry.getAttribute('normal');
+
+      const direction = AppState.activeTool === 'push' ? -1 : 1;
+
+      for (let i = 0; i < positions.count; i++) {
+        const vx = positions.getX(i);
+        const vy = positions.getY(i);
+        const vz = positions.getZ(i);
+
+        // World position of vertex
+        const worldPos = new THREE.Vector3(vx, vy, vz);
+        AppState.eggMesh.localToWorld(worldPos);
+
+        // Distance from intersection point
+        const dist = worldPos.distanceTo(intersectPoint);
+
+        if (dist < BRUSH_RADIUS) {
+          // Gaussian falloff
+          const falloff = Math.exp(-dist * dist / (BRUSH_RADIUS * BRUSH_RADIUS * 0.5));
+          const strength = MORPH_STRENGTH * falloff * direction;
+
+          // Get normal direction
+          const nx = normals.getX(i);
+          const ny = normals.getY(i);
+          const nz = normals.getZ(i);
+
+          // Calculate new position
+          let newX = vx + nx * strength;
+          let newY = vy + ny * strength;
+          let newZ = vz + nz * strength;
+
+          // Check deformation limits
+          const origX = AppState.originalVertices[i * 3];
+          const origY = AppState.originalVertices[i * 3 + 1];
+          const origZ = AppState.originalVertices[i * 3 + 2];
+          const origDist = Math.sqrt(origX * origX + origY * origY + origZ * origZ);
+          const newDist = Math.sqrt(newX * newX + newY * newY + newZ * newZ);
+          const deformation = Math.abs(newDist - origDist) / origDist;
+
+          if (deformation < MAX_DEFORMATION) {
+            positions.setXYZ(i, newX, newY, newZ);
+          }
+        }
+      }
+
+      positions.needsUpdate = true;
+      geometry.computeVertexNormals();
+    }
+
+    function saveToHistory() {
+      const positions = AppState.eggMesh.geometry.getAttribute('position').array;
+      const snapshot = new Float32Array(positions);
+
+      AppState.morphHistory.push(snapshot);
+
+      // Limit history size
+      if (AppState.morphHistory.length > MAX_HISTORY) {
+        AppState.morphHistory.shift();
+      }
+
+      updateUndoButton();
+    }
+
+    function undo() {
+      if (AppState.morphHistory.length === 0) return;
+
+      const snapshot = AppState.morphHistory.pop();
+      const positions = AppState.eggMesh.geometry.getAttribute('position');
+
+      for (let i = 0; i < snapshot.length; i++) {
+        positions.array[i] = snapshot[i];
+      }
+
+      positions.needsUpdate = true;
+      AppState.eggMesh.geometry.computeVertexNormals();
+      updateUndoButton();
+    }
+
+    function updateUndoButton() {
+      const btn = document.getElementById('undo-btn');
+      btn.disabled = AppState.morphHistory.length === 0;
+    }
+
+    function setActiveTool(tool) {
+      AppState.activeTool = tool;
+
+      // Update button states
+      document.querySelectorAll('.toolbar button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      document.getElementById(`${tool}-btn`).classList.add('active');
+
+      // Enable/disable orbit controls
+      if (AppState.controls) {
+        AppState.controls.enabled = tool === 'rotate';
+      }
+
+      // Hide brush indicator when rotating
+      if (AppState.brushIndicator) {
+        AppState.brushIndicator.visible = tool !== 'rotate';
+      }
+
+      // Show hint for morph tools
+      const hint = document.getElementById('tool-hint');
+      hint.classList.toggle('visible', tool !== 'rotate');
+      setTimeout(() => hint.classList.remove('visible'), 2000);
+    }
+
+    function onWindowResize() {
+      const container = document.getElementById('canvas-container');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      AppState.camera.aspect = width / height;
+      AppState.camera.updateProjectionMatrix();
+      AppState.renderer.setSize(width, height);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (AppState.controls) {
+        AppState.controls.update();
+      }
+
+      AppState.renderer.render(AppState.scene, AppState.camera);
+    }
+
+    // Export
+    function exportPolaroid() {
+      const EXPORT_WIDTH = 400;
+      const EXPORT_HEIGHT = 500;
+      const BORDER = 20;
+      const BOTTOM_BORDER = 60;
+      const NUM_FRAMES = 36;
+      const FRAME_DELAY = 80; // ms per frame
+
+      const renderWidth = EXPORT_WIDTH - BORDER * 2;
+      const renderHeight = EXPORT_HEIGHT - BORDER - BOTTOM_BORDER;
+
+      // Hide brush indicator for export
+      if (AppState.brushIndicator) {
+        AppState.brushIndicator.visible = false;
+      }
+
+      // Disable download button during export
+      const downloadBtn = document.getElementById('download-btn');
+      downloadBtn.disabled = true;
+      downloadBtn.textContent = 'Creating GIF...';
+
+      // Random angle for name (-8 to 8 degrees)
+      const nameAngle = (Math.random() - 0.5) * 16 * (Math.PI / 180);
+
+      // Store original egg rotation
+      const originalRotation = AppState.eggMesh.rotation.y;
+
+      // Create temporary camera with correct aspect ratio for export
+      const exportCamera = new THREE.PerspectiveCamera(
+        45,
+        renderWidth / renderHeight,
+        0.1,
+        100
+      );
+      exportCamera.position.set(0, 0, 5);
+      exportCamera.lookAt(0, 0, 0);
+
+      // Create offscreen renderer
+      const exportRenderer = new THREE.WebGLRenderer({
+        antialias: true,
+        preserveDrawingBuffer: true,
+        alpha: false
+      });
+      exportRenderer.setSize(renderWidth, renderHeight);
+      exportRenderer.setPixelRatio(1);
+      exportRenderer.shadowMap.enabled = true;
+      exportRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      // Create GIF encoder
+      const gif = new GIF({
+        workers: 2,
+        quality: 10,
+        width: EXPORT_WIDTH,
+        height: EXPORT_HEIGHT,
+        workerScript: '/projects/Egg/gif.worker.js'
+      });
+
+      // Create polaroid canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = EXPORT_WIDTH;
+      canvas.height = EXPORT_HEIGHT;
+      const ctx = canvas.getContext('2d');
+
+      // Generate frames
+      for (let i = 0; i < NUM_FRAMES; i++) {
+        // Rotate egg
+        AppState.eggMesh.rotation.y = originalRotation + (i / NUM_FRAMES) * Math.PI * 2;
+
+        // Render scene
+        exportRenderer.render(AppState.scene, exportCamera);
+
+        // Draw polaroid frame
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, EXPORT_WIDTH, EXPORT_HEIGHT);
+
+        // Draw rendered egg
+        ctx.drawImage(exportRenderer.domElement, BORDER, BORDER, renderWidth, renderHeight);
+
+        // Draw name with random angle
+        ctx.save();
+        ctx.translate(EXPORT_WIDTH / 2, EXPORT_HEIGHT - 25);
+        ctx.rotate(nameAngle);
+        ctx.fillStyle = '#333';
+        ctx.font = '500 24px Caveat, cursive';
+        ctx.textAlign = 'center';
+        ctx.fillText(AppState.userName || 'Egg', 0, 0);
+        ctx.restore();
+
+        // Add frame to GIF
+        gif.addFrame(ctx, { copy: true, delay: FRAME_DELAY });
+      }
+
+      // Restore original rotation
+      AppState.eggMesh.rotation.y = originalRotation;
+
+      // Finish GIF
+      gif.on('finished', function(blob) {
+        // Download
+        const link = document.createElement('a');
+        link.download = `egg-${AppState.userName || 'photo'}.gif`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+
+        // Re-enable download button
+        downloadBtn.disabled = false;
+        downloadBtn.innerHTML = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Download`;
+
+        // Cleanup
+        exportRenderer.dispose();
+      });
+
+      gif.render();
+    }
+
+    // Screen Management
+    function showScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+      });
+      document.getElementById(`${screenId}-screen`).classList.add('active');
+      AppState.currentScreen = screenId;
+    }
+
+    function updateContinueButton() {
+      const btn = document.getElementById('continue-btn');
+      const hasImage = AppState.uploadedImage !== null;
+      const hasName = AppState.userName.trim().length > 0;
+      btn.classList.toggle('enabled', hasImage && hasName);
+    }
+
+    // Upload Screen Setup
+    function setupUploadScreen() {
+      const dropZone = document.getElementById('drop-zone');
+      const fileInput = document.getElementById('file-input');
+      const nameInput = document.getElementById('name-input');
+      const continueBtn = document.getElementById('continue-btn');
+      const previewImg = document.getElementById('preview-image');
+
+      // Click to select
+      dropZone.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+      });
+
+      dropZone.addEventListener('click', (e) => {
+        fileInput.click();
+      });
+
+      // File input change
+      fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          await handleFile(file);
+        }
+        // Reset input so same file can be selected again
+        fileInput.value = '';
+      });
+
+      // Drag and drop
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+      });
+
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+      });
+
+      dropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) {
+          await handleFile(file);
+        }
+      });
+
+      async function handleFile(file) {
+        try {
+          AppState.uploadedImage = await processImageFile(file);
+          previewImg.src = AppState.uploadedImage;
+          dropZone.classList.add('has-image');
+          updateContinueButton();
+        } catch (err) {
+          console.error('Failed to process image:', err);
+          alert('Failed to process image. Please try another file.');
+        }
+      }
+
+      // Name input
+      nameInput.addEventListener('input', (e) => {
+        AppState.userName = e.target.value;
+        updateContinueButton();
+      });
+
+      // Continue button
+      continueBtn.addEventListener('click', () => {
+        if (AppState.uploadedImage && AppState.userName.trim()) {
+          showScreen('editor');
+          initThreeJS();
+        }
+      });
+    }
+
+    // Editor Screen Setup
+    function setupEditorScreen() {
+      // Tool buttons
+      document.getElementById('rotate-btn').addEventListener('click', () => setActiveTool('rotate'));
+      document.getElementById('push-btn').addEventListener('click', () => setActiveTool('push'));
+      document.getElementById('pull-btn').addEventListener('click', () => setActiveTool('pull'));
+
+      // Undo button
+      document.getElementById('undo-btn').addEventListener('click', undo);
+
+      // Download button
+      document.getElementById('download-btn').addEventListener('click', exportPolaroid);
+    }
+
+    // Initialize
+    function init() {
+      setupUploadScreen();
+      setupEditorScreen();
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
