@@ -2,13 +2,13 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Plastics - Zach Albright Portfolio',
-  description: 'A curated collection of vibe-coded projects and creative experiments',
+  title: 'Plastics - Zach Albright',
+  description: 'Personal catalogue of building and learning with AI',
   keywords: ['portfolio', 'web development', 'vibe-coded', 'projects'],
   authors: [{ name: 'Zach Albright' }],
   openGraph: {
     title: 'Plastics Portfolio',
-    description: 'Vibe-coded projects by Zach Albright',
+    description: 'AI projects by Zach Albright',
     url: 'https://plastics.zalbright.com',
     siteName: 'Plastics',
     type: 'website',
