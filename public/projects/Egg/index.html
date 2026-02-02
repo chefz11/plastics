@@ -232,46 +232,36 @@
       display: block;
     }
 
-    .toolbar {
+    .shape-selector {
       position: absolute;
       top: 16px;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
       gap: 8px;
-      background: var(--btn-bg);
-      padding: 8px;
-      border-radius: 12px;
-      box-shadow: var(--shadow);
       z-index: 10;
     }
 
-    .toolbar button {
-      width: 48px;
-      height: 48px;
-      border: 2px solid transparent;
-      border-radius: 8px;
+    .shape-selector button {
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      border-radius: 20px;
       background: transparent;
+      color: #999;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       transition: all 0.15s ease;
     }
 
-    .toolbar button:hover {
-      background: var(--accent-color);
+    .shape-selector button:hover {
+      color: var(--text-color);
     }
 
-    .toolbar button.active {
-      border-color: var(--text-color);
-      background: var(--accent-color);
-    }
-
-    .toolbar button svg {
-      width: 24px;
-      height: 24px;
-      fill: var(--text-color);
+    .shape-selector button.active {
+      background: var(--btn-bg);
+      color: var(--text-color);
+      box-shadow: var(--shadow);
     }
 
     .bottom-bar {
@@ -298,22 +288,17 @@
       gap: 8px;
     }
 
-    #undo-btn {
+    #start-over-btn {
       background: var(--btn-bg);
       color: var(--text-color);
       box-shadow: var(--shadow);
     }
 
-    #undo-btn:hover:not(:disabled) {
+    #start-over-btn:hover {
       background: var(--accent-color);
     }
 
-    #undo-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    #undo-btn svg {
+    #start-over-btn svg {
       width: 18px;
       height: 18px;
       fill: currentColor;
@@ -338,25 +323,6 @@
       width: 18px;
       height: 18px;
       fill: currentColor;
-    }
-
-    .tool-hint {
-      position: absolute;
-      bottom: 80px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 14px;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.2s ease;
-    }
-
-    .tool-hint.visible {
-      opacity: 1;
     }
 
     /* Responsive */
@@ -420,37 +386,18 @@
   <div id="editor-screen" class="screen">
     <div id="canvas-container"></div>
 
-    <div class="toolbar">
-      <button id="rotate-btn" class="active" title="Rotate">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M7.5 3.5C4.5 5.5 3 9 3 12c0 5 4 9 9 9s9-4 9-9h-2c0 3.9-3.1 7-7 7s-7-3.1-7-7c0-2.5 1.2-5 3.5-6.5L7.5 3.5z"/>
-          <path d="M8 1l4 4-4 4V1z"/>
-          <path d="M16.5 20.5c3-2 4.5-5.5 4.5-8.5 0-5-4-9-9-9v2c3.9 0 7 3.1 7 7 0 2.5-1.2 5-3.5 6.5l1 2z"/>
-          <path d="M16 23l-4-4 4-4v8z"/>
-        </svg>
-      </button>
-      <button id="push-btn" title="Push">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
-          <path d="M12 17l5-5h-3V8h-4v4H7z"/>
-        </svg>
-      </button>
-      <button id="pull-btn" title="Pull">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
-          <path d="M12 7l-5 5h3v4h4v-4h3z"/>
-        </svg>
-      </button>
+    <div class="shape-selector">
+      <button id="shape-egg" class="active">Egg</button>
+      <button id="shape-heart">Heart</button>
+      <button id="shape-gem">Gem</button>
     </div>
 
-    <div class="tool-hint" id="tool-hint">Drag on the egg to morph</div>
-
     <div class="bottom-bar">
-      <button id="undo-btn" disabled>
+      <button id="start-over-btn">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+          <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
         </svg>
-        Undo
+        Start Over
       </button>
       <button id="download-btn">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -467,26 +414,14 @@
       currentScreen: 'upload',
       uploadedImage: null,
       userName: '',
-      originalVertices: null,
-      morphHistory: [],
-      activeTool: 'rotate',
-      isPointerDown: false,
-      lastMorphTime: 0,
+      currentShape: 'egg',
       // Three.js refs
       scene: null,
       camera: null,
       renderer: null,
-      eggMesh: null,
-      controls: null,
-      raycaster: null,
-      pointer: new THREE.Vector2()
+      shapeMesh: null,
+      controls: null
     };
-
-    const MAX_HISTORY = 50;
-    const MORPH_THROTTLE = 16; // ~60fps
-    const MAX_DEFORMATION = 0.15;
-    const BRUSH_RADIUS = 0.8;
-    const MORPH_STRENGTH = 0.008;
 
     // Utility Functions
     async function processImageFile(file) {
@@ -574,6 +509,92 @@
       return geometry;
     }
 
+    // Heart Geometry - soft, rounded heart shape
+    function createHeartGeometry(widthSegments = 64, heightSegments = 32) {
+      const geometry = new THREE.BufferGeometry();
+      const vertices = [];
+      const uvs = [];
+      const indices = [];
+
+      const scale = 0.085;
+
+      for (let y = 0; y <= heightSegments; y++) {
+        const v = y / heightSegments;
+        const phi = v * Math.PI;
+
+        for (let x = 0; x <= widthSegments; x++) {
+          const u = x / widthSegments;
+          const theta = u * Math.PI * 2;
+
+          const sinPhi = Math.sin(phi);
+          const cosPhi = Math.cos(phi);
+          const sinTheta = Math.sin(theta);
+          const cosTheta = Math.cos(theta);
+
+          // Softer heart equation with rounder bottom
+          const heartX = 16 * sinTheta * sinTheta * sinTheta;
+          const heartY = 13 * cosTheta - 5 * Math.cos(2 * theta) - 2 * Math.cos(3 * theta) - Math.cos(4 * theta);
+
+          // Soften the bottom point by blending toward a sphere
+          const sphereBlend = Math.pow(Math.max(0, -cosTheta), 2) * 0.4;
+          const softY = heartY * (1 - sphereBlend) + (12 * cosTheta) * sphereBlend;
+
+          // Flip Y to orient heart right-side up (lobes at top, point at bottom)
+          const px = scale * sinPhi * heartX;
+          const py = scale * sinPhi * softY;
+          const pz = scale * 8 * cosPhi;
+
+          vertices.push(px, py, pz);
+          uvs.push(u, 1 - v);
+        }
+      }
+
+      // Generate indices (reversed winding order for correct normals)
+      for (let y = 0; y < heightSegments; y++) {
+        for (let x = 0; x < widthSegments; x++) {
+          const a = y * (widthSegments + 1) + x;
+          const b = a + widthSegments + 1;
+
+          indices.push(a, a + 1, b);
+          indices.push(b, a + 1, b + 1);
+        }
+      }
+
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+
+      return geometry;
+    }
+
+    // Gem (Dodecahedron) Geometry with UVs
+    function createGemGeometry() {
+      // Use Three.js DodecahedronGeometry as base
+      const dodeca = new THREE.DodecahedronGeometry(1.2, 0);
+
+      // Compute UVs based on spherical projection
+      const positions = dodeca.getAttribute('position');
+      const uvs = [];
+
+      for (let i = 0; i < positions.count; i++) {
+        const x = positions.getX(i);
+        const y = positions.getY(i);
+        const z = positions.getZ(i);
+
+        // Spherical UV mapping
+        const len = Math.sqrt(x * x + y * y + z * z);
+        const u = 0.5 + Math.atan2(z, x) / (2 * Math.PI);
+        const v = 0.5 - Math.asin(y / len) / Math.PI;
+
+        uvs.push(u, v);
+      }
+
+      dodeca.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+
+      return dodeca;
+    }
+
     // Three.js Setup
     function initThreeJS() {
       const container = document.getElementById('canvas-container');
@@ -599,8 +620,8 @@
       // Lighting
       createLighting();
 
-      // Egg
-      createEgg();
+      // Shape
+      createShape();
 
       // Shadow plane
       createShadowPlane();
@@ -612,12 +633,6 @@
       AppState.controls.minDistance = 3;
       AppState.controls.maxDistance = 10;
       AppState.controls.enablePan = false;
-
-      // Raycaster
-      AppState.raycaster = new THREE.Raycaster();
-
-      // Input handling
-      setupInputHandlers();
 
       // Window resize
       window.addEventListener('resize', onWindowResize);
@@ -652,19 +667,26 @@
       AppState.scene.add(fillLight);
     }
 
-    function createEgg() {
-      const geometry = createEggGeometry();
+    function getGeometryForShape(shape) {
+      switch (shape) {
+        case 'heart':
+          return createHeartGeometry();
+        case 'gem':
+          return createGemGeometry();
+        case 'egg':
+        default:
+          return createEggGeometry();
+      }
+    }
 
-      // Store original vertices for deformation limits
-      const positions = geometry.getAttribute('position').array;
-      AppState.originalVertices = new Float32Array(positions);
+    function createShape() {
+      const geometry = getGeometryForShape(AppState.currentShape);
 
       // Load texture
       const textureLoader = new THREE.TextureLoader();
       const texture = textureLoader.load(AppState.uploadedImage);
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.ClampToEdgeWrapping;
-      // Flip texture vertically to correct orientation
       texture.flipY = true;
       texture.repeat.set(1, -1);
       texture.offset.set(0, 1);
@@ -675,27 +697,38 @@
         metalness: 0.0
       });
 
-      AppState.eggMesh = new THREE.Mesh(geometry, material);
-      AppState.eggMesh.castShadow = true;
-      AppState.eggMesh.receiveShadow = true;
-      AppState.scene.add(AppState.eggMesh);
-
-      // Create brush indicator
-      createBrushIndicator();
+      AppState.shapeMesh = new THREE.Mesh(geometry, material);
+      AppState.shapeMesh.castShadow = true;
+      AppState.shapeMesh.receiveShadow = true;
+      AppState.scene.add(AppState.shapeMesh);
     }
 
-    function createBrushIndicator() {
-      const geometry = new THREE.RingGeometry(BRUSH_RADIUS - 0.02, BRUSH_RADIUS, 32);
-      const material = new THREE.MeshBasicMaterial({
-        color: 0x666666,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.5,
-        depthTest: false
+    function changeShape(newShape) {
+      if (newShape === AppState.currentShape) return;
+
+      AppState.currentShape = newShape;
+
+      // Remove old mesh
+      if (AppState.shapeMesh) {
+        AppState.scene.remove(AppState.shapeMesh);
+        AppState.shapeMesh.geometry.dispose();
+        // Keep material for reuse
+      }
+
+      // Create new geometry
+      const geometry = getGeometryForShape(newShape);
+
+      // Reuse existing material
+      AppState.shapeMesh = new THREE.Mesh(geometry, AppState.shapeMesh.material);
+      AppState.shapeMesh.castShadow = true;
+      AppState.shapeMesh.receiveShadow = true;
+      AppState.scene.add(AppState.shapeMesh);
+
+      // Update button states
+      document.querySelectorAll('.shape-selector button').forEach(btn => {
+        btn.classList.remove('active');
       });
-      AppState.brushIndicator = new THREE.Mesh(geometry, material);
-      AppState.brushIndicator.visible = false;
-      AppState.scene.add(AppState.brushIndicator);
+      document.getElementById(`shape-${newShape}`).classList.add('active');
     }
 
     function createShadowPlane() {
@@ -708,200 +741,6 @@
       AppState.scene.add(shadowPlane);
     }
 
-    function setupInputHandlers() {
-      const canvas = AppState.renderer.domElement;
-
-      // Pointer events
-      canvas.addEventListener('pointerdown', onPointerDown);
-      canvas.addEventListener('pointermove', onPointerMove);
-      canvas.addEventListener('pointerup', onPointerUp);
-      canvas.addEventListener('pointerleave', onPointerLeave);
-    }
-
-    function onPointerDown(event) {
-      if (AppState.activeTool === 'rotate') return;
-
-      AppState.isPointerDown = true;
-      updatePointer(event);
-
-      // Save state before morphing starts
-      saveToHistory();
-    }
-
-    function onPointerMove(event) {
-      updatePointer(event);
-
-      // Update brush indicator position
-      if (AppState.activeTool !== 'rotate') {
-        updateBrushIndicator();
-      }
-
-      if (!AppState.isPointerDown || AppState.activeTool === 'rotate') return;
-
-      const now = performance.now();
-      if (now - AppState.lastMorphTime < MORPH_THROTTLE) return;
-      AppState.lastMorphTime = now;
-
-      performMorph();
-    }
-
-    function onPointerUp() {
-      AppState.isPointerDown = false;
-    }
-
-    function onPointerLeave() {
-      AppState.isPointerDown = false;
-      if (AppState.brushIndicator) {
-        AppState.brushIndicator.visible = false;
-      }
-    }
-
-    function updateBrushIndicator() {
-      if (!AppState.brushIndicator) return;
-
-      AppState.raycaster.setFromCamera(AppState.pointer, AppState.camera);
-      const intersects = AppState.raycaster.intersectObject(AppState.eggMesh);
-
-      if (intersects.length > 0) {
-        const intersect = intersects[0];
-        AppState.brushIndicator.position.copy(intersect.point);
-        AppState.brushIndicator.lookAt(
-          intersect.point.x + intersect.face.normal.x,
-          intersect.point.y + intersect.face.normal.y,
-          intersect.point.z + intersect.face.normal.z
-        );
-        // Offset slightly to prevent z-fighting
-        AppState.brushIndicator.position.addScaledVector(intersect.face.normal, 0.01);
-        AppState.brushIndicator.visible = true;
-      } else {
-        AppState.brushIndicator.visible = false;
-      }
-    }
-
-    function updatePointer(event) {
-      const canvas = AppState.renderer.domElement;
-      const rect = canvas.getBoundingClientRect();
-      AppState.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      AppState.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    }
-
-    function performMorph() {
-      AppState.raycaster.setFromCamera(AppState.pointer, AppState.camera);
-      const intersects = AppState.raycaster.intersectObject(AppState.eggMesh);
-
-      if (intersects.length === 0) return;
-
-      const intersect = intersects[0];
-      const intersectPoint = intersect.point;
-      const geometry = AppState.eggMesh.geometry;
-      const positions = geometry.getAttribute('position');
-      const normals = geometry.getAttribute('normal');
-
-      const direction = AppState.activeTool === 'push' ? -1 : 1;
-
-      for (let i = 0; i < positions.count; i++) {
-        const vx = positions.getX(i);
-        const vy = positions.getY(i);
-        const vz = positions.getZ(i);
-
-        // World position of vertex
-        const worldPos = new THREE.Vector3(vx, vy, vz);
-        AppState.eggMesh.localToWorld(worldPos);
-
-        // Distance from intersection point
-        const dist = worldPos.distanceTo(intersectPoint);
-
-        if (dist < BRUSH_RADIUS) {
-          // Gaussian falloff
-          const falloff = Math.exp(-dist * dist / (BRUSH_RADIUS * BRUSH_RADIUS * 0.5));
-          const strength = MORPH_STRENGTH * falloff * direction;
-
-          // Get normal direction
-          const nx = normals.getX(i);
-          const ny = normals.getY(i);
-          const nz = normals.getZ(i);
-
-          // Calculate new position
-          let newX = vx + nx * strength;
-          let newY = vy + ny * strength;
-          let newZ = vz + nz * strength;
-
-          // Check deformation limits
-          const origX = AppState.originalVertices[i * 3];
-          const origY = AppState.originalVertices[i * 3 + 1];
-          const origZ = AppState.originalVertices[i * 3 + 2];
-          const origDist = Math.sqrt(origX * origX + origY * origY + origZ * origZ);
-          const newDist = Math.sqrt(newX * newX + newY * newY + newZ * newZ);
-          const deformation = Math.abs(newDist - origDist) / origDist;
-
-          if (deformation < MAX_DEFORMATION) {
-            positions.setXYZ(i, newX, newY, newZ);
-          }
-        }
-      }
-
-      positions.needsUpdate = true;
-      geometry.computeVertexNormals();
-    }
-
-    function saveToHistory() {
-      const positions = AppState.eggMesh.geometry.getAttribute('position').array;
-      const snapshot = new Float32Array(positions);
-
-      AppState.morphHistory.push(snapshot);
-
-      // Limit history size
-      if (AppState.morphHistory.length > MAX_HISTORY) {
-        AppState.morphHistory.shift();
-      }
-
-      updateUndoButton();
-    }
-
-    function undo() {
-      if (AppState.morphHistory.length === 0) return;
-
-      const snapshot = AppState.morphHistory.pop();
-      const positions = AppState.eggMesh.geometry.getAttribute('position');
-
-      for (let i = 0; i < snapshot.length; i++) {
-        positions.array[i] = snapshot[i];
-      }
-
-      positions.needsUpdate = true;
-      AppState.eggMesh.geometry.computeVertexNormals();
-      updateUndoButton();
-    }
-
-    function updateUndoButton() {
-      const btn = document.getElementById('undo-btn');
-      btn.disabled = AppState.morphHistory.length === 0;
-    }
-
-    function setActiveTool(tool) {
-      AppState.activeTool = tool;
-
-      // Update button states
-      document.querySelectorAll('.toolbar button').forEach(btn => {
-        btn.classList.remove('active');
-      });
-      document.getElementById(`${tool}-btn`).classList.add('active');
-
-      // Enable/disable orbit controls
-      if (AppState.controls) {
-        AppState.controls.enabled = tool === 'rotate';
-      }
-
-      // Hide brush indicator when rotating
-      if (AppState.brushIndicator) {
-        AppState.brushIndicator.visible = tool !== 'rotate';
-      }
-
-      // Show hint for morph tools
-      const hint = document.getElementById('tool-hint');
-      hint.classList.toggle('visible', tool !== 'rotate');
-      setTimeout(() => hint.classList.remove('visible'), 2000);
-    }
 
     function onWindowResize() {
       const container = document.getElementById('canvas-container');
@@ -935,11 +774,6 @@
       const renderWidth = EXPORT_WIDTH - BORDER * 2;
       const renderHeight = EXPORT_HEIGHT - BORDER - BOTTOM_BORDER;
 
-      // Hide brush indicator for export
-      if (AppState.brushIndicator) {
-        AppState.brushIndicator.visible = false;
-      }
-
       // Disable download button during export
       const downloadBtn = document.getElementById('download-btn');
       downloadBtn.disabled = true;
@@ -948,8 +782,8 @@
       // Random angle for name (-8 to 8 degrees)
       const nameAngle = (Math.random() - 0.5) * 16 * (Math.PI / 180);
 
-      // Store original egg rotation
-      const originalRotation = AppState.eggMesh.rotation.y;
+      // Store original rotation
+      const originalRotation = AppState.shapeMesh.rotation.y;
 
       // Create temporary camera with correct aspect ratio for export
       const exportCamera = new THREE.PerspectiveCamera(
@@ -989,8 +823,8 @@
 
       // Generate frames
       for (let i = 0; i < NUM_FRAMES; i++) {
-        // Rotate egg
-        AppState.eggMesh.rotation.y = originalRotation + (i / NUM_FRAMES) * Math.PI * 2;
+        // Rotate shape
+        AppState.shapeMesh.rotation.y = originalRotation + (i / NUM_FRAMES) * Math.PI * 2;
 
         // Render scene
         exportRenderer.render(AppState.scene, exportCamera);
@@ -999,7 +833,7 @@
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, EXPORT_WIDTH, EXPORT_HEIGHT);
 
-        // Draw rendered egg
+        // Draw rendered shape
         ctx.drawImage(exportRenderer.domElement, BORDER, BORDER, renderWidth, renderHeight);
 
         // Draw name with random angle
@@ -1017,13 +851,13 @@
       }
 
       // Restore original rotation
-      AppState.eggMesh.rotation.y = originalRotation;
+      AppState.shapeMesh.rotation.y = originalRotation;
 
       // Finish GIF
       gif.on('finished', function(blob) {
         // Download
         const link = document.createElement('a');
-        link.download = `egg-${AppState.userName || 'photo'}.gif`;
+        link.download = `${AppState.currentShape}-${AppState.userName || 'photo'}.gif`;
         link.href = URL.createObjectURL(blob);
         link.click();
         URL.revokeObjectURL(link.href);
@@ -1128,15 +962,64 @@
       });
     }
 
+    // Start Over - reset and go back to upload screen
+    function startOver() {
+      // Clean up Three.js resources
+      if (AppState.shapeMesh) {
+        AppState.scene.remove(AppState.shapeMesh);
+        AppState.shapeMesh.geometry.dispose();
+        AppState.shapeMesh.material.map.dispose();
+        AppState.shapeMesh.material.dispose();
+        AppState.shapeMesh = null;
+      }
+
+      if (AppState.renderer) {
+        AppState.renderer.dispose();
+        const container = document.getElementById('canvas-container');
+        if (container.firstChild) {
+          container.removeChild(container.firstChild);
+        }
+      }
+
+      if (AppState.controls) {
+        AppState.controls.dispose();
+      }
+
+      // Reset state
+      AppState.scene = null;
+      AppState.camera = null;
+      AppState.renderer = null;
+      AppState.controls = null;
+      AppState.uploadedImage = null;
+      AppState.userName = '';
+      AppState.currentShape = 'egg';
+
+      // Reset UI
+      const dropZone = document.getElementById('drop-zone');
+      dropZone.classList.remove('has-image');
+      document.getElementById('preview-image').src = '';
+      document.getElementById('name-input').value = '';
+      document.getElementById('continue-btn').classList.remove('enabled');
+
+      // Reset shape selector
+      document.querySelectorAll('.shape-selector button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      document.getElementById('shape-egg').classList.add('active');
+
+      // Show upload screen
+      showScreen('upload');
+    }
+
     // Editor Screen Setup
     function setupEditorScreen() {
-      // Tool buttons
-      document.getElementById('rotate-btn').addEventListener('click', () => setActiveTool('rotate'));
-      document.getElementById('push-btn').addEventListener('click', () => setActiveTool('push'));
-      document.getElementById('pull-btn').addEventListener('click', () => setActiveTool('pull'));
+      // Shape selector buttons
+      document.getElementById('shape-egg').addEventListener('click', () => changeShape('egg'));
+      document.getElementById('shape-heart').addEventListener('click', () => changeShape('heart'));
+      document.getElementById('shape-gem').addEventListener('click', () => changeShape('gem'));
 
-      // Undo button
-      document.getElementById('undo-btn').addEventListener('click', undo);
+      // Start over button
+      document.getElementById('start-over-btn').addEventListener('click', startOver);
 
       // Download button
       document.getElementById('download-btn').addEventListener('click', exportPolaroid);
