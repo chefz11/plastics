@@ -51,6 +51,16 @@ export const projects: Project[] = [
     path: '/projects/Egg/index.html',
     isBookmarked: true,
   },
+  {
+    id: 'auto-dashboard',
+    name: 'Glovebox',
+    description: 'AI-Powered Car Maintenance Dashboard',
+    creationDate: '2026-02-13',
+    codingType: 'vibe-coded',
+    contentType: 'static',
+    path: '/projects/AutoDashboard/index.html',
+    isBookmarked: true,
+  },
 ];
 
 export const getProjectById = (id: string): Project | undefined => {

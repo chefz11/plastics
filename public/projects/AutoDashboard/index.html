@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glovebox — Car Maintenance Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: '#1e293b',
+            accent: '#3b82f6',
+            'accent-dark': '#2563eb',
+            success: '#22c55e',
+            warning: '#f59e0b',
+            danger: '#ef4444',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .typing-dot { animation: pulse 1.2s infinite; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    .chat-msg pre { background: #f1f5f9; padding: 8px 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+    .chat-msg code { background: #f1f5f9; padding: 2px 5px; border-radius: 3px; font-size: 13px; }
+    .chat-msg p { margin-bottom: 8px; }
+    .chat-msg ul, .chat-msg ol { margin-left: 20px; margin-bottom: 8px; }
+    .chat-msg li { margin-bottom: 4px; }
+    .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; font-weight: 600; }
+  </style>
+</head>
+<body class="h-full bg-gray-50">
+  <div id="app" class="h-full flex flex-col"></div>
+
+  <script>
+    // ==========================================
+    // DATA LAYER
+    // ==========================================
+    const STORAGE_KEY = 'glovebox_data';
+
+    const SERVICE_TYPES = [
+      { id: 'oil-change', label: 'Oil Change', icon: '💧' },
+      { id: 'tire-rotation', label: 'Tire Rotation', icon: '🔄' },
+      { id: 'brake-service', label: 'Brake Service', icon: '🛑' },
+      { id: 'transmission', label: 'Transmission', icon: '⚙️' },
+      { id: 'coolant-flush', label: 'Coolant Flush', icon: '❄️' },
+      { id: 'air-filter', label: 'Air Filter', icon: '🌬️' },
+      { id: 'cabin-filter', label: 'Cabin Air Filter', icon: '🏠' },
+      { id: 'battery', label: 'Battery', icon: '🔋' },
+      { id: 'alignment', label: 'Alignment', icon: '↔️' },
+      { id: 'spark-plugs', label: 'Spark Plugs', icon: '⚡' },
+      { id: 'timing-belt', label: 'Timing Belt', icon: '🔗' },
+      { id: 'wiper-blades', label: 'Wiper Blades', icon: '🌧️' },
+      { id: 'tire-replacement', label: 'Tire Replacement', icon: '🛞' },
+      { id: 'inspection', label: 'Inspection', icon: '🔍' },
+      { id: 'other', label: 'Other', icon: '🔧' },
+    ];
+
+    const MAINTENANCE_SCHEDULE = [
+      { type: 'oil-change', intervalMiles: 5000, intervalMonths: 6 },
+      { type: 'tire-rotation', intervalMiles: 7500, intervalMonths: 6 },
+      { type: 'air-filter', intervalMiles: 15000, intervalMonths: 12 },
+      { type: 'cabin-filter', intervalMiles: 15000, intervalMonths: 12 },
+      { type: 'brake-service', intervalMiles: 30000, intervalMonths: 24 },
+      { type: 'transmission', intervalMiles: 30000, intervalMonths: 36 },
+      { type: 'coolant-flush', intervalMiles: 30000, intervalMonths: 36 },
+      { type: 'spark-plugs', intervalMiles: 60000, intervalMonths: 60 },
+      { type: 'timing-belt', intervalMiles: 90000, intervalMonths: 84 },
+    ];
+
+    function getDefaultData() {
+      return {
+        vehicles: [],
+        activeVehicleId: null,
+        records: [],
+        settings: {
+          apiKey: '',
+          model: 'deepseek/deepseek-chat-v3-0324:floor',
+        },
+        chatHistories: {},
+      };
+    }
+
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) return { ...getDefaultData(), ...JSON.parse(raw) };
+      } catch (e) { console.error('Failed to load data:', e); }
+      return getDefaultData();
+    }
+
+    function saveData(data) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+      catch (e) { console.error('Failed to save data:', e); }
+    }
+
+    function generateId() {
+      return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+    }
+
+    function getServiceType(id) {
+      return SERVICE_TYPES.find(s => s.id === id) || SERVICE_TYPES[SERVICE_TYPES.length - 1];
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '—';
+      const d = new Date(dateStr + 'T00:00:00');
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function formatMileage(m) {
+      if (m == null) return '—';
+      return Number(m).toLocaleString() + ' mi';
+    }
+
+    function formatCost(c) {
+      if (c == null) return '—';
+      return '$' + Number(c).toFixed(2);
+    }
+
+    function monthsDiff(d1, d2) {
+      const a = new Date(d1), b = new Date(d2);
+      return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+    }
+
+    // ==========================================
+    // STATE
+    // ==========================================
+    let data = loadData();
+    let currentScreen = data.vehicles.length === 0 ? 'setup' : 'main';
+    let mobileTab = 'dashboard'; // 'input' | 'dashboard' | 'chat'
+    let inputMode = 'paste'; // 'paste' | 'manual'
+    let extractedRecords = null; // for review screen
+    let isExtracting = false;
+    let isChatting = false;
+    let chatAbortController = null;
+    let showSettings = false;
+    let editingVehicle = null; // vehicle id being edited, or 'new'
+    let setupStep = 'vehicle'; // 'vehicle' | 'apikey'
+
+    function getActiveVehicle() {
+      return data.vehicles.find(v => v.id === data.activeVehicleId) || data.vehicles[0];
+    }
+
+    function getVehicleRecords(vehicleId) {
+      return data.records
+        .filter(r => r.vehicleId === vehicleId)
+        .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    }
+
+    function getChatHistory(vehicleId) {
+      return data.chatHistories[vehicleId] || [];
+    }
+
+    function setChatHistory(vehicleId, history) {
+      data.chatHistories[vehicleId] = history.slice(-20);
+      saveData(data);
+    }
+
+    // ==========================================
+    // UPCOMING MAINTENANCE CALCULATOR
+    // ==========================================
+    function getUpcomingMaintenance(vehicle) {
+      const records = getVehicleRecords(vehicle.id);
+      const now = new Date();
+      const items = [];
+
+      for (const sched of MAINTENANCE_SCHEDULE) {
+        const st = getServiceType(sched.type);
+        const lastRecord = records.find(r => r.serviceType === sched.type);
+
+        let dueMileage, dueDate, status;
+
+        if (lastRecord) {
+          dueMileage = (lastRecord.mileage || 0) + sched.intervalMiles;
+          const lastDate = new Date(lastRecord.date + 'T00:00:00');
+          dueDate = new Date(lastDate);
+          dueDate.setMonth(dueDate.getMonth() + sched.intervalMonths);
+        } else {
+          dueMileage = vehicle.currentMileage + Math.round(sched.intervalMiles * 0.25);
+          dueDate = new Date(now);
+          dueDate.setMonth(dueDate.getMonth() + 1);
+        }
+
+        const milesUntil = dueMileage - vehicle.currentMileage;
+        const daysUntil = Math.round((dueDate - now) / (1000 * 60 * 60 * 24));
+
+        if (milesUntil <= 0 || daysUntil <= 0) {
+          status = 'overdue';
+        } else if (milesUntil <= 1000 || daysUntil <= 30) {
+          status = 'due-soon';
+        } else {
+          status = 'on-track';
+        }
+
+        items.push({
+          ...sched,
+          label: st.label,
+          icon: st.icon,
+          lastRecord,
+          dueMileage,
+          dueDate,
+          milesUntil,
+          daysUntil,
+          status,
+        });
+      }
+
+      items.sort((a, b) => {
+        const order = { 'overdue': 0, 'due-soon': 1, 'on-track': 2 };
+        if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+        return a.milesUntil - b.milesUntil;
+      });
+
+      return items;
+    }
+
+    function getHealthScore(vehicle) {
+      const items = getUpcomingMaintenance(vehicle);
+      const overdue = items.filter(i => i.status === 'overdue').length;
+      const dueSoon = items.filter(i => i.status === 'due-soon').length;
+      const onTrack = items.filter(i => i.status === 'on-track').length;
+      if (overdue > 0) return { level: 'danger', label: 'Needs Attention', overdue, dueSoon, onTrack };
+      if (dueSoon > 0) return { level: 'warning', label: 'Good — Services Due Soon', overdue, dueSoon, onTrack };
+      return { level: 'success', label: 'All Up to Date', overdue, dueSoon, onTrack };
+    }
+
+    // ==========================================
+    // LLM INTEGRATION
+    // ==========================================
+    async function callLLM(messages, { stream = false, signal } = {}) {
+      const key = data.settings.apiKey;
+      if (!key) throw new Error('No API key configured');
+
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${key}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': window.location.origin || 'https://glovebox.app',
+          'X-Title': 'Glovebox',
+        },
+        body: JSON.stringify({
+          model: data.settings.model,
+          messages,
+          temperature: 0.3,
+          max_tokens: 1500,
+          stream,
+        }),
+        signal,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || `API error ${res.status}`);
+      }
+
+      if (stream) return res;
+
+      const json = await res.json();
+      return json.choices?.[0]?.message?.content || '';
+    }
+
+    async function extractRecords(text, vehicle) {
+      const sysPrompt = `You are a car maintenance data extractor. Given unstructured text about car maintenance or repair, extract structured data into a JSON array of objects. Each object should have:
+{
+  "date": "YYYY-MM-DD or null",
+  "mileage": number or null,
+  "serviceType": one of [${SERVICE_TYPES.map(s => '"' + s.id + '"').join(', ')}],
+  "serviceLabel": "short description",
+  "provider": "mechanic/dealer name or null",
+  "cost": number or null (USD),
+  "notes": "relevant details or empty string",
+  "urgency": "routine" | "recommended" | "urgent"
+}
+
+If only one service, still return an array with one object. Only return valid JSON array. No markdown, no explanation.`;
+
+      const userMsg = `Vehicle: ${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.trim ? ' ' + vehicle.trim : ''}, current mileage: ${formatMileage(vehicle.currentMileage)}
+
+Extract maintenance data from:
+---
+${text}
+---`;
+
+      const result = await callLLM([
+        { role: 'system', content: sysPrompt },
+        { role: 'user', content: userMsg },
+      ]);
+
+      // Parse JSON from the response, handling potential markdown wrapping
+      let cleaned = result.trim();
+      if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/^```(?:json)?\s*/, '').replace(/```\s*$/, '');
+      }
+      const parsed = JSON.parse(cleaned);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    }
+
+    function buildChatContext(vehicle) {
+      const records = getVehicleRecords(vehicle.id);
+      const upcoming = getUpcomingMaintenance(vehicle);
+
+      let recordsText = 'No maintenance records yet.';
+      if (records.length > 0) {
+        recordsText = records.slice(0, 30).map(r => {
+          const st = getServiceType(r.serviceType);
+          let line = `- ${formatDate(r.date)}`;
+          if (r.mileage) line += ` @ ${formatMileage(r.mileage)}`;
+          line += `: ${r.serviceLabel || st.label}`;
+          if (r.cost) line += ` (${formatCost(r.cost)})`;
+          if (r.provider) line += ` at ${r.provider}`;
+          return line;
+        }).join('\n');
+      }
+
+      let upcomingText = upcoming.map(u => {
+        const statusLabel = u.status === 'overdue' ? 'OVERDUE' : u.status === 'due-soon' ? 'Due Soon' : 'On Track';
+        return `- ${u.label}: ${statusLabel} — due at ${formatMileage(u.dueMileage)} or ${formatDate(u.dueDate.toISOString().slice(0, 10))}`;
+      }).join('\n');
+
+      return `You are a knowledgeable, practical car maintenance advisor. You have access to the user's vehicle and maintenance data.
+
+Vehicle: ${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.trim ? ' ' + vehicle.trim : ''}
+Current Mileage: ${formatMileage(vehicle.currentMileage)} (as of ${formatDate(vehicle.lastMileageUpdate)})
+
+Maintenance History (most recent first):
+${recordsText}
+
+Upcoming/Overdue Maintenance:
+${upcomingText}
+
+Guidelines:
+- Give practical, actionable advice
+- When asked about pricing, provide typical price ranges for the service
+- Consider the vehicle's specific year, make, model, age, and mileage
+- If unsure, say so honestly rather than guessing
+- Keep responses concise (2-3 paragraphs max)
+- Reference the actual maintenance history when relevant
+- If recommending a service, explain why it matters`;
+    }
+
+    // ==========================================
+    // RENDER ENGINE
+    // ==========================================
+    function render() {
+      const app = document.getElementById('app');
+      if (currentScreen === 'setup') {
+        app.innerHTML = renderSetup();
+      } else if (showSettings) {
+        app.innerHTML = renderSettings();
+      } else {
+        app.innerHTML = renderMain();
+      }
+      attachEventListeners();
+    }
+
+    // ==========================================
+    // SETUP SCREEN
+    // ==========================================
+    function renderSetup() {
+      if (setupStep === 'vehicle') {
+        const v = editingVehicle && editingVehicle !== 'new'
+          ? data.vehicles.find(x => x.id === editingVehicle)
+          : null;
+        return `
+        <div class="h-full flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-blue-50">
+          <div class="w-full max-w-md fade-in">
+            <div class="text-center mb-8">
+              <div class="text-4xl mb-3">🧤</div>
+              <h1 class="text-2xl font-bold text-navy">Glovebox</h1>
+              <p class="text-gray-500 mt-1">Your AI-powered car maintenance dashboard</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h2 class="text-lg font-semibold text-gray-800 mb-4">${v ? 'Edit Vehicle' : 'Add Your Vehicle'}</h2>
+              <form id="vehicleForm" class="space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Year</label>
+                    <input type="number" id="vYear" value="${v?.year || ''}" placeholder="2019" min="1970" max="2030"
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" required>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Make</label>
+                    <input type="text" id="vMake" value="${v?.make || ''}" placeholder="Honda"
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" required>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Model</label>
+                    <input type="text" id="vModel" value="${v?.model || ''}" placeholder="Civic"
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" required>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Trim <span class="text-gray-400">(optional)</span></label>
+                    <input type="text" id="vTrim" value="${v?.trim || ''}" placeholder="EX"
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-600 mb-1">Current Mileage</label>
+                  <input type="number" id="vMileage" value="${v?.currentMileage || ''}" placeholder="67234" min="0"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" required>
+                </div>
+                <button type="submit" class="w-full bg-accent hover:bg-accent-dark text-white font-medium py-2.5 rounded-lg transition-colors">
+                  ${v ? 'Save Changes' : 'Continue'}
+                </button>
+                ${data.vehicles.length > 0 ? `<button type="button" id="cancelSetup" class="w-full text-gray-500 hover:text-gray-700 text-sm py-2">Cancel</button>` : ''}
+              </form>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      // API key setup step
+      return `
+      <div class="h-full flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-blue-50">
+        <div class="w-full max-w-md fade-in">
+          <div class="text-center mb-8">
+            <div class="text-4xl mb-3">🧤</div>
+            <h1 class="text-2xl font-bold text-navy">Glovebox</h1>
+            <p class="text-gray-500 mt-1">Connect an AI model for smart features</p>
+          </div>
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">OpenRouter API Key</h2>
+            <div class="bg-blue-50 rounded-lg p-4 mb-4 text-sm text-blue-800 space-y-2">
+              <p class="font-medium">Quick setup (2 minutes):</p>
+              <ol class="list-decimal list-inside space-y-1 text-blue-700">
+                <li>Create a free account at <strong>openrouter.ai</strong></li>
+                <li>Go to <strong>Keys</strong> in your dashboard</li>
+                <li>Click <strong>Create Key</strong> and copy it</li>
+                <li>Add $5–20 in credits (lasts months of use)</li>
+              </ol>
+            </div>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">API Key</label>
+                <input type="password" id="apiKeyInput" value="${data.settings.apiKey}" placeholder="sk-or-..."
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
+              </div>
+              <div id="apiKeyStatus" class="text-sm hidden"></div>
+              <div class="flex gap-2">
+                <button id="testKeyBtn" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-lg transition-colors text-sm">
+                  Test Connection
+                </button>
+                <button id="saveKeyBtn" class="flex-1 bg-accent hover:bg-accent-dark text-white font-medium py-2.5 rounded-lg transition-colors text-sm">
+                  Save & Continue
+                </button>
+              </div>
+              <button id="skipKeyBtn" class="w-full text-gray-400 hover:text-gray-600 text-sm py-2">
+                Skip for now — I'll add it later
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    // ==========================================
+    // SETTINGS SCREEN
+    // ==========================================
+    function renderSettings() {
+      return `
+      <div class="h-full flex flex-col">
+        <header class="bg-navy text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
+          <div class="flex items-center gap-2">
+            <button id="closeSettings" class="text-white/70 hover:text-white">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
+            <span class="font-semibold">Settings</span>
+          </div>
+        </header>
+        <div class="flex-1 overflow-y-auto p-4 max-w-lg mx-auto w-full">
+          <div class="space-y-6">
+            <div>
+              <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">AI Configuration</h3>
+              <div class="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">OpenRouter API Key</label>
+                  <input type="password" id="settingsApiKey" value="${data.settings.apiKey}" placeholder="sk-or-..."
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
+                  <input type="text" id="settingsModel" value="${data.settings.model}" placeholder="deepseek/deepseek-chat-v3-0324:floor"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
+                </div>
+                <button id="saveSettingsBtn" class="w-full bg-accent hover:bg-accent-dark text-white font-medium py-2 rounded-lg text-sm transition-colors">
+                  Save Settings
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Vehicles</h3>
+              <div class="space-y-2">
+                ${data.vehicles.map(v => `
+                  <div class="bg-white rounded-lg border border-gray-200 p-4 flex items-center justify-between">
+                    <div>
+                      <p class="font-medium text-gray-800">${v.year} ${v.make} ${v.model}${v.trim ? ' ' + v.trim : ''}</p>
+                      <p class="text-sm text-gray-500">${formatMileage(v.currentMileage)}</p>
+                    </div>
+                    <div class="flex gap-2">
+                      <button class="editVehicleBtn text-accent hover:text-accent-dark text-sm" data-id="${v.id}">Edit</button>
+                      ${data.vehicles.length > 1 ? `<button class="deleteVehicleBtn text-red-400 hover:text-red-600 text-sm" data-id="${v.id}">Delete</button>` : ''}
+                    </div>
+                  </div>
+                `).join('')}
+                <button id="addVehicleBtn" class="w-full border border-dashed border-gray-300 rounded-lg p-3 text-sm text-gray-500 hover:text-accent hover:border-accent transition-colors">
+                  + Add Vehicle
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Data</h3>
+              <div class="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
+                <button id="exportDataBtn" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 rounded-lg text-sm transition-colors">
+                  Export All Data (JSON)
+                </button>
+                <button id="importDataBtn" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 rounded-lg text-sm transition-colors">
+                  Import Data (JSON)
+                </button>
+                <input type="file" id="importFileInput" accept=".json" class="hidden">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    // ==========================================
+    // MAIN SCREEN
+    // ==========================================
+    function renderMain() {
+      const vehicle = getActiveVehicle();
+      if (!vehicle) { currentScreen = 'setup'; return renderSetup(); }
+
+      return `
+      <header class="bg-navy text-white px-4 py-2.5 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <span class="text-lg">🧤</span>
+          <span class="font-semibold text-sm hidden sm:inline">Glovebox</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <select id="vehicleSelector" class="bg-white/10 text-white text-sm rounded-lg px-2 py-1.5 border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent max-w-[200px]">
+            ${data.vehicles.map(v => `<option value="${v.id}" ${v.id === vehicle.id ? 'selected' : ''}>${v.year} ${v.make} ${v.model}</option>`).join('')}
+          </select>
+          <button id="updateMileageBtn" class="text-white/70 hover:text-white text-xs bg-white/10 rounded-lg px-2 py-1.5" title="Update mileage">
+            ${formatMileage(vehicle.currentMileage)}
+          </button>
+          <button id="openSettings" class="text-white/70 hover:text-white">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Mobile tabs -->
+      <div class="flex sm:hidden border-b border-gray-200 bg-white flex-shrink-0">
+        <button class="mobileTab flex-1 py-2.5 text-sm text-center ${mobileTab === 'input' ? 'tab-active' : 'text-gray-500'}" data-tab="input">Add</button>
+        <button class="mobileTab flex-1 py-2.5 text-sm text-center ${mobileTab === 'dashboard' ? 'tab-active' : 'text-gray-500'}" data-tab="dashboard">Dashboard</button>
+        <button class="mobileTab flex-1 py-2.5 text-sm text-center ${mobileTab === 'chat' ? 'tab-active' : 'text-gray-500'}" data-tab="chat">Chat</button>
+      </div>
+
+      <div class="flex-1 flex overflow-hidden min-h-0">
+        <!-- Input Panel -->
+        <div class="w-full sm:w-72 lg:w-80 border-r border-gray-200 bg-white flex-shrink-0 flex-col overflow-hidden ${mobileTab === 'input' ? 'flex' : 'hidden sm:flex'}">
+          ${renderInputPanel(vehicle)}
+        </div>
+
+        <!-- Dashboard Panel -->
+        <div class="flex-1 overflow-y-auto bg-gray-50 scrollbar-thin ${mobileTab === 'dashboard' ? 'block' : 'hidden sm:block'}">
+          ${renderDashboard(vehicle)}
+        </div>
+
+        <!-- Chat Panel -->
+        <div class="w-full sm:w-80 lg:w-96 border-l border-gray-200 bg-white flex-shrink-0 flex-col overflow-hidden ${mobileTab === 'chat' ? 'flex' : 'hidden sm:flex'}">
+          ${renderChatPanel(vehicle)}
+        </div>
+      </div>`;
+    }
+
+    // ==========================================
+    // INPUT PANEL
+    // ==========================================
+    function renderInputPanel(vehicle) {
+      if (extractedRecords) return renderReviewScreen(vehicle);
+
+      return `
+      <div class="p-3 border-b border-gray-100 flex gap-2">
+        <button class="inputModeBtn flex-1 text-xs py-1.5 rounded-md font-medium transition-colors ${inputMode === 'paste' ? 'bg-accent text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}" data-mode="paste">
+          AI Extract
+        </button>
+        <button class="inputModeBtn flex-1 text-xs py-1.5 rounded-md font-medium transition-colors ${inputMode === 'manual' ? 'bg-accent text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}" data-mode="manual">
+          Manual Entry
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-3 scrollbar-thin">
+        ${inputMode === 'paste' ? renderPasteInput(vehicle) : renderManualInput(vehicle)}
+      </div>`;
+    }
+
+    function renderPasteInput(vehicle) {
+      const hasKey = !!data.settings.apiKey;
+      return `
+      <div class="space-y-3">
+        ${!hasKey ? `
+          <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+            <p class="font-medium mb-1">API key needed</p>
+            <p>Set up your OpenRouter API key in <button id="goToSettings" class="text-accent underline">Settings</button> to use AI extraction.</p>
+          </div>
+        ` : ''}
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Paste email, receipt, estimate, or any text</label>
+          <textarea id="pasteInput" rows="8" placeholder="Example: Hi Zach, your 2019 Civic is due for a brake inspection. We recommend front brake pad replacement and rotor resurfacing for $249. Current mileage: 67,234 miles..."
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" ${!hasKey ? 'disabled' : ''}></textarea>
+        </div>
+        <button id="extractBtn" class="w-full bg-accent hover:bg-accent-dark text-white font-medium py-2 rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" ${!hasKey || isExtracting ? 'disabled' : ''}>
+          ${isExtracting ? '<span class="typing-dot inline-block w-1.5 h-1.5 bg-white rounded-full"></span><span class="typing-dot inline-block w-1.5 h-1.5 bg-white rounded-full"></span><span class="typing-dot inline-block w-1.5 h-1.5 bg-white rounded-full"></span> Extracting...' : 'Extract with AI'}
+        </button>
+        <div id="extractError" class="text-xs text-red-600 hidden"></div>
+
+        ${hasKey ? `
+        <div>
+          <p class="text-xs text-gray-400 mb-2">Quick add:</p>
+          <div class="flex flex-wrap gap-1.5">
+            ${['Oil Change', 'Tire Rotation', 'Brake Service', 'Inspection'].map(s => `
+              <button class="quickAddBtn text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded-md transition-colors" data-service="${s}">${s}</button>
+            `).join('')}
+          </div>
+        </div>` : ''}
+      </div>`;
+    }
+
+    function renderManualInput(vehicle) {
+      return `
+      <form id="manualForm" class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Service Type</label>
+          <select id="mServiceType" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" required>
+            ${SERVICE_TYPES.map(s => `<option value="${s.id}">${s.icon} ${s.label}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
+          <input type="text" id="mLabel" placeholder="Full synthetic oil change" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Date</label>
+            <input type="date" id="mDate" value="${new Date().toISOString().slice(0, 10)}" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" required>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Cost ($)</label>
+            <input type="number" id="mCost" step="0.01" min="0" placeholder="89.99" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Mileage</label>
+            <input type="number" id="mMileage" placeholder="${vehicle.currentMileage}" min="0" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Urgency</label>
+            <select id="mUrgency" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
+              <option value="routine">Routine</option>
+              <option value="recommended">Recommended</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Provider</label>
+          <input type="text" id="mProvider" placeholder="Jiffy Lube" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+          <textarea id="mNotes" rows="2" placeholder="Any additional details..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"></textarea>
+        </div>
+        <button type="submit" class="w-full bg-accent hover:bg-accent-dark text-white font-medium py-2 rounded-lg text-sm transition-colors">
+          Add Record
+        </button>
+      </form>`;
+    }
+
+    function renderReviewScreen(vehicle) {
+      return `
+      <div class="p-3 border-b border-gray-100">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-800">Review Extracted Data</h3>
+          <button id="cancelReview" class="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">Verify and edit before saving</p>
+      </div>
+      <div class="flex-1 overflow-y-auto p-3 scrollbar-thin space-y-4">
+        ${extractedRecords.map((rec, i) => `
+          <div class="bg-gray-50 rounded-lg p-3 space-y-2 border border-gray-200" data-idx="${i}">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-gray-500">Record ${i + 1}</span>
+              ${extractedRecords.length > 1 ? `<button class="removeExtracted text-xs text-red-400 hover:text-red-600" data-idx="${i}">Remove</button>` : ''}
+            </div>
+            <select class="exServiceType w-full border border-gray-300 rounded px-2 py-1.5 text-sm" data-idx="${i}">
+              ${SERVICE_TYPES.map(s => `<option value="${s.id}" ${s.id === rec.serviceType ? 'selected' : ''}>${s.icon} ${s.label}</option>`).join('')}
+            </select>
+            <input type="text" class="exLabel w-full border border-gray-300 rounded px-2 py-1.5 text-sm" value="${escHtml(rec.serviceLabel || '')}" placeholder="Description" data-idx="${i}">
+            <div class="grid grid-cols-2 gap-2">
+              <input type="date" class="exDate border border-gray-300 rounded px-2 py-1.5 text-sm" value="${rec.date || ''}" data-idx="${i}">
+              <input type="number" class="exCost border border-gray-300 rounded px-2 py-1.5 text-sm" value="${rec.cost || ''}" placeholder="Cost $" step="0.01" data-idx="${i}">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <input type="number" class="exMileage border border-gray-300 rounded px-2 py-1.5 text-sm" value="${rec.mileage || ''}" placeholder="Mileage" data-idx="${i}">
+              <input type="text" class="exProvider border border-gray-300 rounded px-2 py-1.5 text-sm" value="${escHtml(rec.provider || '')}" placeholder="Provider" data-idx="${i}">
+            </div>
+          </div>
+        `).join('')}
+        <button id="saveExtracted" class="w-full bg-accent hover:bg-accent-dark text-white font-medium py-2 rounded-lg text-sm transition-colors">
+          Save ${extractedRecords.length} Record${extractedRecords.length > 1 ? 's' : ''}
+        </button>
+      </div>`;
+    }
+
+    // ==========================================
+    // DASHBOARD PANEL
+    // ==========================================
+    function renderDashboard(vehicle) {
+      const records = getVehicleRecords(vehicle.id);
+      const upcoming = getUpcomingMaintenance(vehicle);
+      const health = getHealthScore(vehicle);
+
+      const totalCost = records.reduce((sum, r) => sum + (r.cost || 0), 0);
+      const thisYear = records.filter(r => r.date && r.date.startsWith(new Date().getFullYear().toString()));
+      const thisYearCost = thisYear.reduce((sum, r) => sum + (r.cost || 0), 0);
+
+      // Group records by year
+      const byYear = {};
+      records.forEach(r => {
+        const y = r.date ? r.date.slice(0, 4) : 'Unknown';
+        if (!byYear[y]) byYear[y] = [];
+        byYear[y].push(r);
+      });
+
+      // Cost by category
+      const byCat = {};
+      records.forEach(r => {
+        const st = getServiceType(r.serviceType);
+        if (!byCat[st.label]) byCat[st.label] = 0;
+        byCat[st.label] += (r.cost || 0);
+      });
+      const maxCat = Math.max(...Object.values(byCat), 1);
+
+      const healthColors = { danger: 'bg-red-100 text-red-700 border-red-200', warning: 'bg-amber-50 text-amber-700 border-amber-200', success: 'bg-green-50 text-green-700 border-green-200' };
+      const healthDot = { danger: 'bg-red-500', warning: 'bg-amber-500', success: 'bg-green-500' };
+
+      return `
+      <div class="p-4 lg:p-6 max-w-3xl mx-auto space-y-6 fade-in">
+        <!-- Health Score -->
+        <div class="rounded-xl border p-4 ${healthColors[health.level]}">
+          <div class="flex items-center gap-3">
+            <div class="w-3 h-3 rounded-full ${healthDot[health.level]}"></div>
+            <div>
+              <h2 class="font-semibold">${health.label}</h2>
+              <p class="text-sm opacity-80 mt-0.5">
+                ${health.overdue > 0 ? `${health.overdue} overdue` : ''}
+                ${health.overdue > 0 && health.dueSoon > 0 ? ' · ' : ''}
+                ${health.dueSoon > 0 ? `${health.dueSoon} due soon` : ''}
+                ${(health.overdue > 0 || health.dueSoon > 0) && health.onTrack > 0 ? ' · ' : ''}
+                ${health.onTrack > 0 ? `${health.onTrack} on track` : ''}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upcoming Maintenance -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Upcoming Maintenance</h3>
+          <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+            ${upcoming.length === 0 ? '<p class="p-4 text-sm text-gray-400">No scheduled maintenance items</p>' :
+              upcoming.slice(0, 6).map(u => {
+                const statusBadge = {
+                  'overdue': 'bg-red-100 text-red-700',
+                  'due-soon': 'bg-amber-100 text-amber-700',
+                  'on-track': 'bg-green-100 text-green-700',
+                };
+                const statusLabel = { 'overdue': 'Overdue', 'due-soon': 'Due Soon', 'on-track': 'On Track' };
+                return `
+                <div class="p-3 flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <span class="text-lg">${u.icon}</span>
+                    <div>
+                      <p class="text-sm font-medium text-gray-800">${u.label}</p>
+                      <p class="text-xs text-gray-500">
+                        ${u.status === 'overdue'
+                          ? `${Math.abs(u.milesUntil).toLocaleString()} mi overdue`
+                          : `Due in ${u.milesUntil.toLocaleString()} mi or ${u.daysUntil} days`}
+                        ${u.lastRecord ? ` · Last: ${formatDate(u.lastRecord.date)}` : ' · No record'}
+                      </p>
+                    </div>
+                  </div>
+                  <span class="text-xs font-medium px-2 py-0.5 rounded-full ${statusBadge[u.status]}">${statusLabel[u.status]}</span>
+                </div>`;
+              }).join('')}
+          </div>
+        </div>
+
+        <!-- Cost Summary -->
+        ${records.length > 0 ? `
+        <div>
+          <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Spending</h3>
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="flex gap-4 mb-4">
+              <div>
+                <p class="text-xs text-gray-500">All Time</p>
+                <p class="text-lg font-bold text-gray-800">${formatCost(totalCost)}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500">${new Date().getFullYear()}</p>
+                <p class="text-lg font-bold text-gray-800">${formatCost(thisYearCost)}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500">Records</p>
+                <p class="text-lg font-bold text-gray-800">${records.length}</p>
+              </div>
+            </div>
+            ${Object.keys(byCat).length > 0 ? `
+              <div class="space-y-2">
+                ${Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([cat, cost]) => `
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-600 w-28 truncate">${cat}</span>
+                    <div class="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                      <div class="h-full bg-accent rounded-full" style="width: ${(cost / maxCat * 100).toFixed(1)}%"></div>
+                    </div>
+                    <span class="text-xs text-gray-500 w-16 text-right">${formatCost(cost)}</span>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+        ` : ''}
+
+        <!-- Maintenance Timeline -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Maintenance History</h3>
+          ${records.length === 0 ? `
+            <div class="bg-white rounded-xl border border-gray-200 p-8 text-center">
+              <div class="text-3xl mb-3">🧤</div>
+              <p class="text-gray-500 text-sm">No maintenance records yet</p>
+              <p class="text-gray-400 text-xs mt-1">Add your first record using the input panel</p>
+            </div>
+          ` : Object.entries(byYear).sort((a, b) => b[0].localeCompare(a[0])).map(([year, recs]) => `
+            <div class="mb-4">
+              <h4 class="text-xs font-bold text-gray-400 mb-2">${year}</h4>
+              <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                ${recs.map(r => {
+                  const st = getServiceType(r.serviceType);
+                  return `
+                  <div class="p-3 group">
+                    <div class="flex items-start justify-between">
+                      <div class="flex items-start gap-3">
+                        <span class="text-lg mt-0.5">${st.icon}</span>
+                        <div>
+                          <p class="text-sm font-medium text-gray-800">${escHtml(r.serviceLabel || st.label)}</p>
+                          <p class="text-xs text-gray-500 mt-0.5">
+                            ${formatDate(r.date)}${r.mileage ? ' · ' + formatMileage(r.mileage) : ''}${r.provider ? ' · ' + escHtml(r.provider) : ''}
+                          </p>
+                          ${r.notes ? `<p class="text-xs text-gray-400 mt-1">${escHtml(r.notes)}</p>` : ''}
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        ${r.cost ? `<span class="text-sm font-medium text-gray-700">${formatCost(r.cost)}</span>` : ''}
+                        <button class="deleteRecordBtn opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all" data-id="${r.id}">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>`;
+                }).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+    }
+
+    // ==========================================
+    // CHAT PANEL
+    // ==========================================
+    function renderChatPanel(vehicle) {
+      const history = getChatHistory(vehicle.id);
+      const hasKey = !!data.settings.apiKey;
+
+      const suggestedPrompts = [
+        'Is my car up to date on maintenance?',
+        'What should I prioritize next?',
+        'How often should I really change my oil?',
+        'What maintenance costs should I budget for?',
+      ];
+
+      return `
+      <div class="flex flex-col h-full">
+        <div class="p-3 border-b border-gray-100 flex items-center justify-between">
+          <span class="text-sm font-semibold text-gray-700">Maintenance Advisor</span>
+          ${history.length > 0 ? `<button id="clearChatBtn" class="text-xs text-gray-400 hover:text-gray-600">Clear</button>` : ''}
+        </div>
+        <div id="chatMessages" class="flex-1 overflow-y-auto p-3 scrollbar-thin space-y-3">
+          ${!hasKey ? `
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 mt-2">
+              <p class="font-medium mb-1">API key needed</p>
+              <p>Set up your OpenRouter key in <button id="goToSettings2" class="text-accent underline">Settings</button> to chat with the maintenance advisor.</p>
+            </div>
+          ` : history.length === 0 ? `
+            <div class="mt-4 text-center">
+              <p class="text-sm text-gray-400 mb-4">Ask about your car's maintenance</p>
+              <div class="space-y-2">
+                ${suggestedPrompts.map(p => `
+                  <button class="suggestedPrompt w-full text-left text-xs bg-gray-50 hover:bg-gray-100 text-gray-600 p-2.5 rounded-lg transition-colors border border-gray-200" data-prompt="${escHtml(p)}">${escHtml(p)}</button>
+                `).join('')}
+              </div>
+            </div>
+          ` : history.map(m => `
+            <div class="fade-in ${m.role === 'user' ? 'flex justify-end' : ''}">
+              <div class="${m.role === 'user' ? 'bg-accent text-white rounded-2xl rounded-br-md px-3 py-2 max-w-[85%]' : 'chat-msg bg-gray-50 rounded-2xl rounded-bl-md px-3 py-2 max-w-[85%] text-gray-800'}">
+                <div class="text-sm">${m.role === 'user' ? escHtml(m.content) : renderMarkdown(m.content)}</div>
+              </div>
+            </div>
+          `).join('')}
+          ${isChatting ? `
+            <div class="fade-in">
+              <div class="chat-msg bg-gray-50 rounded-2xl rounded-bl-md px-3 py-2 max-w-[85%]">
+                <div id="streamingContent" class="text-sm text-gray-800"></div>
+                <div id="chatTypingIndicator" class="flex gap-1 py-1">
+                  <span class="typing-dot inline-block w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                  <span class="typing-dot inline-block w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                  <span class="typing-dot inline-block w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                </div>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+        <div class="p-3 border-t border-gray-100">
+          <div class="flex gap-2">
+            <input type="text" id="chatInput" placeholder="${hasKey ? 'Ask about your car...' : 'Configure API key first'}"
+              class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent" ${!hasKey || isChatting ? 'disabled' : ''}>
+            <button id="chatSendBtn" class="bg-accent hover:bg-accent-dark text-white px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" ${!hasKey || isChatting ? 'disabled' : ''}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    function renderMarkdown(text) {
+      if (!text) return '';
+      try { return DOMPurify.sanitize(marked.parse(text)); }
+      catch { return escHtml(text); }
+    }
+
+    function escHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ==========================================
+    // EVENT HANDLING
+    // ==========================================
+    function attachEventListeners() {
+      // Setup: vehicle form
+      const vForm = document.getElementById('vehicleForm');
+      if (vForm) {
+        vForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const v = editingVehicle && editingVehicle !== 'new'
+            ? data.vehicles.find(x => x.id === editingVehicle)
+            : null;
+          const vehicleData = {
+            id: v?.id || generateId(),
+            year: parseInt(document.getElementById('vYear').value),
+            make: document.getElementById('vMake').value.trim(),
+            model: document.getElementById('vModel').value.trim(),
+            trim: document.getElementById('vTrim').value.trim() || '',
+            currentMileage: parseInt(document.getElementById('vMileage').value),
+            lastMileageUpdate: new Date().toISOString().slice(0, 10),
+          };
+          if (v) {
+            Object.assign(v, vehicleData);
+          } else {
+            data.vehicles.push(vehicleData);
+            data.activeVehicleId = vehicleData.id;
+          }
+          saveData(data);
+          editingVehicle = null;
+          if (data.settings.apiKey) {
+            currentScreen = 'main';
+          } else {
+            setupStep = 'apikey';
+          }
+          render();
+        });
+      }
+
+      // Setup: cancel
+      document.getElementById('cancelSetup')?.addEventListener('click', () => {
+        currentScreen = 'main';
+        showSettings = false;
+        editingVehicle = null;
+        render();
+      });
+
+      // Setup: API key
+      document.getElementById('testKeyBtn')?.addEventListener('click', async () => {
+        const key = document.getElementById('apiKeyInput').value.trim();
+        const status = document.getElementById('apiKeyStatus');
+        if (!key) { status.textContent = 'Please enter a key'; status.className = 'text-sm text-red-600'; status.classList.remove('hidden'); return; }
+        status.textContent = 'Testing...'; status.className = 'text-sm text-gray-500'; status.classList.remove('hidden');
+        try {
+          const res = await fetch('https://openrouter.ai/api/v1/models', {
+            headers: { 'Authorization': `Bearer ${key}` },
+          });
+          if (res.ok) {
+            status.textContent = 'Connection successful!'; status.className = 'text-sm text-green-600';
+          } else {
+            status.textContent = 'Invalid key or connection failed'; status.className = 'text-sm text-red-600';
+          }
+        } catch {
+          status.textContent = 'Network error — check your connection'; status.className = 'text-sm text-red-600';
+        }
+        status.classList.remove('hidden');
+      });
+
+      document.getElementById('saveKeyBtn')?.addEventListener('click', () => {
+        data.settings.apiKey = document.getElementById('apiKeyInput').value.trim();
+        saveData(data);
+        currentScreen = 'main';
+        render();
+      });
+
+      document.getElementById('skipKeyBtn')?.addEventListener('click', () => {
+        currentScreen = 'main';
+        render();
+      });
+
+      // Settings
+      document.getElementById('openSettings')?.addEventListener('click', () => { showSettings = true; render(); });
+      document.getElementById('closeSettings')?.addEventListener('click', () => { showSettings = false; render(); });
+
+      document.getElementById('saveSettingsBtn')?.addEventListener('click', () => {
+        data.settings.apiKey = document.getElementById('settingsApiKey').value.trim();
+        data.settings.model = document.getElementById('settingsModel').value.trim() || 'deepseek/deepseek-chat-v3-0324:floor';
+        saveData(data);
+        showSettings = false;
+        render();
+      });
+
+      document.getElementById('addVehicleBtn')?.addEventListener('click', () => {
+        editingVehicle = 'new';
+        setupStep = 'vehicle';
+        currentScreen = 'setup';
+        render();
+      });
+
+      document.querySelectorAll('.editVehicleBtn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          editingVehicle = btn.dataset.id;
+          setupStep = 'vehicle';
+          currentScreen = 'setup';
+          render();
+        });
+      });
+
+      document.querySelectorAll('.deleteVehicleBtn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (!confirm('Delete this vehicle and all its records?')) return;
+          const id = btn.dataset.id;
+          data.vehicles = data.vehicles.filter(v => v.id !== id);
+          data.records = data.records.filter(r => r.vehicleId !== id);
+          delete data.chatHistories[id];
+          if (data.activeVehicleId === id) {
+            data.activeVehicleId = data.vehicles[0]?.id || null;
+          }
+          saveData(data);
+          if (data.vehicles.length === 0) { currentScreen = 'setup'; setupStep = 'vehicle'; }
+          render();
+        });
+      });
+
+      // Export / Import
+      document.getElementById('exportDataBtn')?.addEventListener('click', () => {
+        const exportData = { ...data, settings: { ...data.settings, apiKey: '' } };
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'glovebox-backup.json'; a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      document.getElementById('importDataBtn')?.addEventListener('click', () => {
+        document.getElementById('importFileInput')?.click();
+      });
+
+      document.getElementById('importFileInput')?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const imported = JSON.parse(ev.target.result);
+            data = { ...getDefaultData(), ...imported };
+            saveData(data);
+            showSettings = false;
+            currentScreen = data.vehicles.length > 0 ? 'main' : 'setup';
+            render();
+          } catch { alert('Invalid JSON file'); }
+        };
+        reader.readAsText(file);
+      });
+
+      // Vehicle selector
+      document.getElementById('vehicleSelector')?.addEventListener('change', (e) => {
+        data.activeVehicleId = e.target.value;
+        saveData(data);
+        render();
+      });
+
+      // Update mileage
+      document.getElementById('updateMileageBtn')?.addEventListener('click', () => {
+        const vehicle = getActiveVehicle();
+        const newMileage = prompt('Update current mileage:', vehicle.currentMileage);
+        if (newMileage !== null && !isNaN(parseInt(newMileage))) {
+          vehicle.currentMileage = parseInt(newMileage);
+          vehicle.lastMileageUpdate = new Date().toISOString().slice(0, 10);
+          saveData(data);
+          render();
+        }
+      });
+
+      // Mobile tabs
+      document.querySelectorAll('.mobileTab').forEach(btn => {
+        btn.addEventListener('click', () => { mobileTab = btn.dataset.tab; render(); });
+      });
+
+      // Input mode toggle
+      document.querySelectorAll('.inputModeBtn').forEach(btn => {
+        btn.addEventListener('click', () => { inputMode = btn.dataset.mode; render(); });
+      });
+
+      // Go to settings from input panel
+      document.getElementById('goToSettings')?.addEventListener('click', () => { showSettings = true; render(); });
+      document.getElementById('goToSettings2')?.addEventListener('click', () => { showSettings = true; render(); });
+
+      // Quick add
+      document.querySelectorAll('.quickAddBtn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const service = btn.dataset.service;
+          const ta = document.getElementById('pasteInput');
+          if (ta) ta.value = `${service} on ${new Date().toLocaleDateString()}`;
+        });
+      });
+
+      // AI Extract
+      document.getElementById('extractBtn')?.addEventListener('click', async () => {
+        const text = document.getElementById('pasteInput')?.value.trim();
+        if (!text || text.length < 5) return;
+        const vehicle = getActiveVehicle();
+        isExtracting = true;
+        render();
+        try {
+          const records = await extractRecords(text, vehicle);
+          extractedRecords = records.map(r => ({
+            ...r,
+            rawInput: text,
+          }));
+          isExtracting = false;
+          render();
+        } catch (err) {
+          isExtracting = false;
+          render();
+          const el = document.getElementById('extractError');
+          if (el) { el.textContent = err.message; el.classList.remove('hidden'); }
+        }
+      });
+
+      // Review: cancel
+      document.getElementById('cancelReview')?.addEventListener('click', () => {
+        extractedRecords = null;
+        render();
+      });
+
+      // Review: remove one
+      document.querySelectorAll('.removeExtracted').forEach(btn => {
+        btn.addEventListener('click', () => {
+          extractedRecords.splice(parseInt(btn.dataset.idx), 1);
+          if (extractedRecords.length === 0) extractedRecords = null;
+          render();
+        });
+      });
+
+      // Review: save
+      document.getElementById('saveExtracted')?.addEventListener('click', () => {
+        const vehicle = getActiveVehicle();
+        extractedRecords.forEach((rec, i) => {
+          const st = document.querySelector(`.exServiceType[data-idx="${i}"]`);
+          const label = document.querySelector(`.exLabel[data-idx="${i}"]`);
+          const date = document.querySelector(`.exDate[data-idx="${i}"]`);
+          const cost = document.querySelector(`.exCost[data-idx="${i}"]`);
+          const mileage = document.querySelector(`.exMileage[data-idx="${i}"]`);
+          const provider = document.querySelector(`.exProvider[data-idx="${i}"]`);
+
+          data.records.push({
+            id: generateId(),
+            vehicleId: vehicle.id,
+            date: date?.value || rec.date || '',
+            mileage: mileage?.value ? parseInt(mileage.value) : rec.mileage || null,
+            serviceType: st?.value || rec.serviceType || 'other',
+            serviceLabel: label?.value || rec.serviceLabel || '',
+            provider: provider?.value || rec.provider || '',
+            cost: cost?.value ? parseFloat(cost.value) : rec.cost || null,
+            notes: rec.notes || '',
+            urgency: rec.urgency || 'routine',
+            source: 'extracted',
+            rawInput: rec.rawInput || '',
+            createdAt: new Date().toISOString(),
+          });
+        });
+        saveData(data);
+        extractedRecords = null;
+        render();
+      });
+
+      // Manual form
+      const mForm = document.getElementById('manualForm');
+      if (mForm) {
+        mForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const vehicle = getActiveVehicle();
+          const st = document.getElementById('mServiceType').value;
+          const stInfo = getServiceType(st);
+          const mileageVal = document.getElementById('mMileage').value;
+
+          data.records.push({
+            id: generateId(),
+            vehicleId: vehicle.id,
+            date: document.getElementById('mDate').value,
+            mileage: mileageVal ? parseInt(mileageVal) : null,
+            serviceType: st,
+            serviceLabel: document.getElementById('mLabel').value.trim() || stInfo.label,
+            provider: document.getElementById('mProvider').value.trim(),
+            cost: document.getElementById('mCost').value ? parseFloat(document.getElementById('mCost').value) : null,
+            notes: document.getElementById('mNotes').value.trim(),
+            urgency: document.getElementById('mUrgency').value,
+            source: 'manual',
+            rawInput: '',
+            createdAt: new Date().toISOString(),
+          });
+
+          // Update mileage if provided and higher
+          if (mileageVal && parseInt(mileageVal) > vehicle.currentMileage) {
+            vehicle.currentMileage = parseInt(mileageVal);
+            vehicle.lastMileageUpdate = new Date().toISOString().slice(0, 10);
+          }
+
+          saveData(data);
+          mobileTab = 'dashboard';
+          render();
+        });
+      }
+
+      // Delete record
+      document.querySelectorAll('.deleteRecordBtn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (!confirm('Delete this record?')) return;
+          data.records = data.records.filter(r => r.id !== btn.dataset.id);
+          saveData(data);
+          render();
+        });
+      });
+
+      // Chat
+      const chatInput = document.getElementById('chatInput');
+      const chatSend = document.getElementById('chatSendBtn');
+
+      function sendChat() {
+        const msg = chatInput?.value.trim();
+        if (!msg || isChatting) return;
+        handleChat(msg);
+      }
+
+      chatSend?.addEventListener('click', sendChat);
+      chatInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+      });
+
+      // Suggested prompts
+      document.querySelectorAll('.suggestedPrompt').forEach(btn => {
+        btn.addEventListener('click', () => { handleChat(btn.dataset.prompt); });
+      });
+
+      // Clear chat
+      document.getElementById('clearChatBtn')?.addEventListener('click', () => {
+        const vehicle = getActiveVehicle();
+        setChatHistory(vehicle.id, []);
+        render();
+      });
+
+      // Scroll chat to bottom
+      const chatEl = document.getElementById('chatMessages');
+      if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    // ==========================================
+    // CHAT HANDLER (with streaming)
+    // ==========================================
+    async function handleChat(userMessage) {
+      const vehicle = getActiveVehicle();
+      const history = getChatHistory(vehicle.id);
+
+      history.push({ role: 'user', content: userMessage });
+      setChatHistory(vehicle.id, history);
+      isChatting = true;
+      render();
+
+      // Scroll chat to bottom
+      const chatEl = document.getElementById('chatMessages');
+      if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+
+      const systemMsg = buildChatContext(vehicle);
+      const messages = [
+        { role: 'system', content: systemMsg },
+        ...history.slice(-20).map(m => ({ role: m.role, content: m.content })),
+      ];
+
+      let fullResponse = '';
+      chatAbortController = new AbortController();
+
+      try {
+        const res = await callLLM(messages, { stream: true, signal: chatAbortController.signal });
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+
+        // Hide typing indicator, show streaming content
+        const typingEl = document.getElementById('chatTypingIndicator');
+        if (typingEl) typingEl.style.display = 'none';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const delta = parsed.choices?.[0]?.delta?.content;
+              if (delta) {
+                fullResponse += delta;
+                const streamEl = document.getElementById('streamingContent');
+                if (streamEl) {
+                  streamEl.innerHTML = renderMarkdown(fullResponse);
+                  if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+                }
+              }
+            } catch {}
+          }
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          fullResponse = fullResponse || '(cancelled)';
+        } else {
+          fullResponse = `Error: ${err.message}`;
+        }
+      }
+
+      history.push({ role: 'assistant', content: fullResponse });
+      setChatHistory(vehicle.id, history);
+      isChatting = false;
+      chatAbortController = null;
+      render();
+    }
+
+    // ==========================================
+    // INIT
+    // ==========================================
+    render();
+  </script>
+</body>
+</html>
