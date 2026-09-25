@@ -397,7 +397,7 @@
     // Load and display books
     async function loadBooks() {
       try {
-        const response = await fetch('goodreads_library_export (Mar2026).csv');
+        const response = await fetch('goodreads_library_export (Sep2026).csv');
         const csvText = await response.text();
         const books = parseCSV(csvText);
         const booksByYear = groupBooksByYear(books);
