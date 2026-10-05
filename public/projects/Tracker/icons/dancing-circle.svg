@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 80" fill="none">
+  <title>Loading</title>
+  <style>
+    .circle {
+      fill: #204CCF;
+      transform-origin: 48px 58px;
+      animation: dance 1.6s cubic-bezier(.45, 0, .55, 1) infinite;
+    }
+    @keyframes dance {
+      0%, 50%, 100% { transform: translate(0, 0) scale(1, 1); }
+      7%, 57% { transform: translate(0, 0) scale(1.15, .85); }
+      25% { transform: translate(-16px, -20px) rotate(-12deg) scale(.94, 1.06); }
+      43%, 93% { transform: translate(0, 0) scale(1.18, .82); }
+      75% { transform: translate(16px, -20px) rotate(12deg) scale(.94, 1.06); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .circle { animation: none; }
+    }
+  </style>
+  <circle class="circle" cx="48" cy="44" r="14"/>
+</svg>

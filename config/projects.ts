@@ -7,9 +7,8 @@ export const projects: Project[] = [
     description: 'Books, Movies, and Games History',
     creationDate: '2026-10-01',
     codingType: 'vibe-coded',
-    contentType: 'live',
-    url: 'https://zach-media-tracker.chefz11.chatgpt.site',
-    openInNewTab: true,
+    contentType: 'static',
+    path: '/projects/Tracker/index.html',
     isBookmarked: true,
   },
   {

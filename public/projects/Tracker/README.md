@@ -1,0 +1,1 @@
+Tracker public demo. Built from the shared Tracker UI with npm run build:demo in the Tracker/app workspace. Demo data stays in browser storage; no server access or owner history. Placeholder artwork is original SVG.

@@ -12,5 +12,4 @@ export interface Project {
   path?: string;             // For static projects
   isBookmarked: boolean;
   thumbnail?: string;
-  openInNewTab?: boolean;    // For apps that require a separate sign-in session
 }
