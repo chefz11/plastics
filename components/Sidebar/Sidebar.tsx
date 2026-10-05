@@ -42,13 +42,16 @@ export default function Sidebar({
         />
       )}
       {!isCollapsed && (
-        <div className="mt-auto p-4 flex items-center gap-2">
+        <a
+          href="https://zalbright.com/"
+          className="mt-auto p-4 flex items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-[#204ccf]"
+        >
           <div
             className="w-6 h-6 rounded-full flex-shrink-0"
             style={{ backgroundColor: '#204ccf' }}
           />
           <span className="text-sidebar-text text-sm font-helvetica font-bold">Zach Albright</span>
-        </div>
+        </a>
       )}
     </div>
   );

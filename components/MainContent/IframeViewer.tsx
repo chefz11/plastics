@@ -5,9 +5,10 @@ import React, { useState } from 'react';
 interface IframeViewerProps {
   url: string;
   title: string;
+  name?: string;
 }
 
-export default function IframeViewer({ url, title }: IframeViewerProps) {
+export default function IframeViewer({ url, title, name }: IframeViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
@@ -56,6 +57,7 @@ export default function IframeViewer({ url, title }: IframeViewerProps) {
       <iframe
         src={url}
         title={title}
+        name={name}
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         referrerPolicy="no-referrer"
         loading="lazy"

@@ -30,7 +30,13 @@ export default function ProjectDisplay({ project }: ProjectDisplayProps) {
   }
 
   if (project.contentType === 'live' && project.url) {
-    return <IframeViewer url={project.url} title={project.name} />;
+    return (
+      <IframeViewer
+        url={project.url}
+        title={project.name}
+        name={project.id === 'portfolio' ? 'plastics-portfolio' : undefined}
+      />
+    );
   }
 
   if (project.contentType === 'static' && project.path) {
