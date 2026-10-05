@@ -29,6 +29,28 @@ export default function ProjectDisplay({ project }: ProjectDisplayProps) {
     );
   }
 
+  if (project.contentType === 'live' && project.url && project.openInNewTab) {
+    return (
+      <div className="flex items-center justify-center h-full bg-white p-8">
+        <div className="text-center max-w-md">
+          <h1 className="text-xl font-semibold text-gray-800 mb-2">{project.name}</h1>
+          <p className="text-gray-600 mb-6">
+            A personal history of finished books, watched movies, and finished games.
+            {' '}Sign in to access this private app.
+          </p>
+          <a
+            href={project.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600"
+          >
+            Open {project.name} →
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   if (project.contentType === 'live' && project.url) {
     return <IframeViewer url={project.url} title={project.name} />;
   }

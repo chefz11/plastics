@@ -2,6 +2,17 @@ import { Project } from '@/types/project';
 
 export const projects: Project[] = [
   {
+    id: 'tracker',
+    name: 'Tracker',
+    description: 'Books, Movies, and Games History',
+    creationDate: '2026-10-01',
+    codingType: 'vibe-coded',
+    contentType: 'live',
+    url: 'https://zach-media-tracker.chefz11.chatgpt.site',
+    openInNewTab: true,
+    isBookmarked: true,
+  },
+  {
     id: 'roast-mutton',
     name: 'Roast Mutton',
     description: 'Lord of the Rings Reading Tracker',
