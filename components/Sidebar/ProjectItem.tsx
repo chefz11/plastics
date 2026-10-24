@@ -14,17 +14,6 @@ export default function ProjectItem({ project, isSelected, onClick }: ProjectIte
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
   };
 
-  const getCodingTypeLabel = (type: Project['codingType']): string => {
-    switch (type) {
-      case 'vibe-coded':
-        return 'Vibed';
-      case 'pair-coded':
-        return 'Paired';
-      case 'manual':
-        return 'Manual';
-    }
-  };
-
   return (
     <div
       onClick={onClick}
@@ -35,7 +24,7 @@ export default function ProjectItem({ project, isSelected, onClick }: ProjectIte
     >
       <h3 className="text-sidebar-text font-medium text-sm">{project.name}</h3>
       <p className="text-sidebar-muted text-xs mt-0.5">
-        {formatDate(project.creationDate)} · {getCodingTypeLabel(project.codingType)}
+        {formatDate(project.creationDate)}
       </p>
     </div>
   );
