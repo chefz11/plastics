@@ -9,13 +9,13 @@ export const metadata: Metadata = {
     default: 'Plastics - Zach Albright',
     template: '%s - Plastics',
   },
-  description: 'Personal catalogue of building and learning with AI',
+  description: 'Personal catalog of building and learning with AI',
   keywords: ['AI projects', 'web development', 'vibe-coded', 'creative coding', 'experiments'],
   authors: [{ name: 'Zach Albright', url: 'https://zalbright.com' }],
   creator: 'Zach Albright',
   openGraph: {
     title: 'Plastics',
-    description: 'Personal catalogue of building and learning with AI',
+    description: 'Personal catalog of building and learning with AI',
     url: siteUrl,
     siteName: 'Plastics',
     locale: 'en_US',
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Plastics',
-    description: 'Personal catalogue of building and learning with AI',
+    description: 'Personal catalog of building and learning with AI',
     images: ['/api/og'],
   },
   robots: {
