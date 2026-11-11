@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import GitHubLink from '@/components/GitHubLink';
 import { Project } from '@/types/project';
 import IframeViewer from './IframeViewer';
 import StaticViewer from './StaticViewer';
@@ -12,8 +13,8 @@ interface ProjectDisplayProps {
 export default function ProjectDisplay({ project }: ProjectDisplayProps) {
   if (!project) {
     return (
-      <div className="flex items-center justify-center h-full bg-white">
-        <div className="text-left max-w-2xl px-8" style={{ color: '#1a1a1a' }}>
+      <div className="flex justify-center h-full overflow-y-auto bg-white">
+        <div className="my-auto text-left max-w-lg px-8 py-8" style={{ color: '#1a1a1a' }}>
           <p className="text-base mb-4">
             <span className="logo-text" style={{ fontSize: '1rem' }}>Plastics</span> is a personal catalog of building and learning with AI. Why &ldquo;Plastics&rdquo;?
           </p>
@@ -23,7 +24,10 @@ export default function ProjectDisplay({ project }: ProjectDisplayProps) {
           <p className="text-base mb-4">
             Sturgeon&rsquo;s law states that 90% of everything is crap. This is my attempt at sorting through to find the other 10%.
           </p>
-          <p className="text-base">Zach</p>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-base">Zach</p>
+            <GitHubLink className="-mr-3 shrink-0" />
+          </div>
         </div>
       </div>
     );

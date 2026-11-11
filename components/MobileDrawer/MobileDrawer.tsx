@@ -49,8 +49,8 @@ export default function MobileDrawer({ isOpen, onClose, children }: MobileDrawer
       <div
         className={clsx(
           'fixed left-0 top-0 bottom-0 w-sidebar bg-sidebar-bg z-50 md:hidden',
-          'transform transition-transform duration-300 ease-in-out',
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+          'transform transition-[transform,visibility] duration-300 ease-in-out',
+          isOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'
         )}
       >
         {children}
